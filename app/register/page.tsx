@@ -32,7 +32,7 @@ export default async function RegisterPage() {
               <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <ShieldCheck className="size-4" />
               </span>
-              Vaxa
+              Voxa
             </Link>
             <Badge variant="secondary">Free to join</Badge>
           </div>

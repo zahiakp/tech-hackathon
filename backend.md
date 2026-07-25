@@ -1,6 +1,6 @@
 # Backend API - Frontend Integration Guide
 
-This is the frontend contract for the Vaxa campus platform backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
+This is the frontend contract for the Voxa campus platform backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
 
 Machine-readable documentation:
 

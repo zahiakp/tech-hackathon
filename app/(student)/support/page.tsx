@@ -24,7 +24,7 @@ const supportActions = [
   { href: "/support/request", title: "Request support", description: "Tell the team what kind of help you need.", icon: MessageCircleHeart },
   { href: "/support/appointments", title: "Appointments", description: "Review and book support sessions.", icon: CalendarDays },
   { href: "/support/resources", title: "Well-being resources", description: "Short guides for everyday student well-being.", icon: LibraryBig },
-  { href: "/support/lexa", title: "Lexa", description: "Ask Vaxa's campus-resource assistant for safe next steps.", icon: Bot },
+  { href: "/support/lexa", title: "Lexa", description: "Ask Voxa's campus-resource assistant for safe next steps.", icon: Bot },
 ];
 
 export default function SupportPage() {
@@ -36,7 +36,7 @@ export default function SupportPage() {
         eyebrow="Student care"
         title="Peer support & well-being"
       />
-      <PreviewAlert description="Some directory cards use demo data. Lexa and protected support services connect to the Vaxa backend." />
+      <PreviewAlert description="Some directory cards use demo data. Lexa and protected support services connect to the Voxa backend." />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {supportActions.map((action) => (
           <Link className="group" href={action.href} key={action.href}>

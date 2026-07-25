@@ -1,6 +1,6 @@
-# Vaxa Campus Platform
+# Voxa Campus Platform
 
-A modular backend built into the existing Next.js App Router application for the 72-hour Vaxa platform. The API is versioned under `/api/v1` and uses Auth.js, Prisma, Neon PostgreSQL, Zod, Pusher Channels, UploadThing, Resend, and the OpenAI Responses API.
+A modular backend built into the existing Next.js App Router application for the 72-hour Voxa platform. The API is versioned under `/api/v1` and uses Auth.js, Prisma, Neon PostgreSQL, Zod, Pusher Channels, UploadThing, Resend, and the OpenAI Responses API.
 
 ## Delivered modules
 
