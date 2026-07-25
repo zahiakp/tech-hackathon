@@ -1,200 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { LoadingState } from '@/components/feedback/loading-state';
-import { EmptyState } from '@/components/feedback/empty-state';
-import { LibraryBookRecord, LibraryIssueRecord } from '@/types/common';
-import { ArrowRightLeft, AlertCircle, BookOpen } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, BookCheck, BookOpen, BookPlus, Library, RotateCcw } from "lucide-react";
+import { EmptyState } from "@/components/feedback/empty-state"; import { ErrorState } from "@/components/feedback/error-state"; import { LoadingState } from "@/components/feedback/loading-state"; import { StatCard } from "@/components/shared/stat-card"; import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button"; import { Card, CardContent } from "@/components/ui/card"; import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label"; import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ApiClientError, apiFetch } from "@/lib/api-client"; import type { LibraryBookDto, LibraryLoanDto } from "@/lib/operational-types";
 
+type LibraryResponse = { books: LibraryBookDto[]; loans: LibraryLoanDto[] };
 export function LibraryDashboardFeature() {
-  const [books, setBooks] = useState<LibraryBookRecord[]>([]);
-  const [issues, setIssues] = useState<LibraryIssueRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [studentIdScan, setStudentIdScan] = useState('');
-  const [bookIsbnScan, setBookIsbnScan] = useState('');
-
-  const loadLibrary = async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch<any>('/library');
-      if (res.data) {
-        if (Array.isArray(res.data)) {
-          const mappedBooks: LibraryBookRecord[] = res.data.map((bk: any) => ({
-            id: bk.id,
-            isbn: bk.isbn || '978-0000000000',
-            title: bk.title,
-            author: bk.author || 'Author',
-            category: bk.category || 'General',
-            totalCopies: bk.totalCopies || 1,
-            availableCopies: bk.availableCopies || 1,
-            issuedCopies: bk.issuedCopies || 0,
-            shelfLocation: bk.shelfLocation || 'Section A',
-            status: bk.status || 'AVAILABLE',
-          }));
-          setBooks(mappedBooks);
-        } else {
-          if (res.data.books) setBooks(res.data.books);
-          if (res.data.issues) setIssues(res.data.issues);
-        }
-      }
-    } catch (err) {
-      setBooks([]);
-      setIssues([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadLibrary();
-  }, []);
-
-  const handleIssueBook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!studentIdScan || !bookIsbnScan) return;
-    try {
-      await apiFetch('/library', {
-        method: 'POST',
-        body: JSON.stringify({ studentId: studentIdScan, isbn: bookIsbnScan, action: 'ISSUE' }),
-      });
-      setStudentIdScan('');
-      setBookIsbnScan('');
-      await loadLibrary();
-    } catch (err) {
-      // Error handled
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Quick Issue / Return Desk Card */}
-      <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-            <ArrowRightLeft className="h-4 w-4 text-emerald-600" /> Rapid Book Circulation Desk
-          </CardTitle>
-          <CardDescription className="text-xs">Scan or enter Student ID & ISBN to issue or process return</CardDescription>
-        </CardHeader>
-        <CardContent className="p-4">
-          <form onSubmit={handleIssueBook} className="grid sm:grid-cols-3 gap-3 items-end text-xs">
-            <div className="space-y-1">
-              <Label>Student ID Number</Label>
-              <Input placeholder="Scan or enter STD-204..." value={studentIdScan} onChange={(e) => setStudentIdScan(e.target.value)} className="h-9" />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Book ISBN Barcode</Label>
-              <Input placeholder="Scan ISBN 978-0134685991..." value={bookIsbnScan} onChange={(e) => setBookIsbnScan(e.target.value)} className="h-9" />
-            </div>
-
-            <Button type="submit" className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
-              Process Book Issue
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Overdue Issues & Fine Tracker */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" /> Overdue Books & Unpaid Fines
-          </CardTitle>
-          <CardDescription className="text-xs">Automated daily overdue fine calculations</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          {loading ? (
-            <LoadingState label="Loading library catalog & active loans..." />
-          ) : issues.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              No overdue book issues recorded.
-            </div>
-          ) : (
-            <Table className="w-full min-w-[550px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40 text-xs">
-                  <TableHead>Student Name</TableHead>
-                  <TableHead>Book Title</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Fine Accrued</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {issues.map((iss) => (
-                  <TableRow key={iss.id} className="hover:bg-muted/30">
-                    <TableCell className="font-semibold text-foreground">{iss.studentName}</TableCell>
-                    <TableCell className="font-medium text-foreground">{iss.bookTitle}</TableCell>
-                    <TableCell className="text-rose-600 font-mono font-bold">{iss.dueDate}</TableCell>
-                    <TableCell className="font-bold text-rose-600">${iss.fineAmount.toFixed(2)}</TableCell>
-                    <TableCell><StatusBadge status={iss.status} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" className="h-7 text-[11px] bg-emerald-600 text-white">
-                        Clear Fine & Return
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Library Catalog Inventory */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold">Library Book Catalog</CardTitle>
-          <CardDescription className="text-xs">Copy availability & shelf location index</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <LoadingState label="Fetching book catalog..." />
-          ) : books.length === 0 ? (
-            <EmptyState
-              icon={<BookOpen className="h-10 w-10 text-muted-foreground" />}
-              title="No Books in Catalog"
-              description="The library catalog is currently empty."
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 text-xs">
-                  <TableHead>ISBN</TableHead>
-                  <TableHead>Title & Author</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Available Copies</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {books.map((bk) => (
-                  <TableRow key={bk.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono text-foreground">{bk.isbn}</TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-foreground">{bk.title}</div>
-                      <div className="text-[11px] text-muted-foreground">{bk.author}</div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{bk.category}</TableCell>
-                    <TableCell className="text-muted-foreground font-mono">{bk.shelfLocation}</TableCell>
-                    <TableCell className="font-bold text-emerald-600">{bk.availableCopies} / {bk.totalCopies}</TableCell>
-                    <TableCell><StatusBadge status={bk.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+ const [data,setData]=useState<LibraryResponse>({books:[],loans:[]}); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(""); const [bookOpen,setBookOpen]=useState(false); const [loanOpen,setLoanOpen]=useState(false);
+ const [book,setBook]=useState({isbn:"",title:"",author:"",category:"General",totalCopies:"1",shelfLocation:""}); const [loan,setLoan]=useState({bookId:"",borrowerEmail:"student@campus.demo",dueAt:""});
+ const load=useCallback(async()=>{try{const response=await apiFetch<LibraryResponse>("/library");setData(response.data);setError("");}catch(cause){setError(cause instanceof ApiClientError?cause.message:"Unable to load library data.");}finally{setLoading(false);}},[]); useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
+ const metrics=useMemo(()=>({copies:data.books.reduce((s,b)=>s+b.totalCopies,0),available:data.books.reduce((s,b)=>s+b.availableCopies,0),active:data.loans.filter(l=>l.status!=="RETURNED").length,overdue:data.loans.filter(l=>l.status==="OVERDUE").length}),[data]);
+ async function addBook(e:React.FormEvent){e.preventDefault();setSaving(true);try{await apiFetch("/library",{method:"POST",body:JSON.stringify({...book,totalCopies:Number(book.totalCopies)})});setBookOpen(false);setBook({isbn:"",title:"",author:"",category:"General",totalCopies:"1",shelfLocation:""});await load();}catch(cause){setError(cause instanceof ApiClientError?cause.message:"Unable to add book.");}finally{setSaving(false);}}
+ async function issueBook(e:React.FormEvent){e.preventDefault();setSaving(true);try{await apiFetch("/library/loans",{method:"POST",body:JSON.stringify({...loan,dueAt:new Date(`${loan.dueAt}T23:59:59`).toISOString()})});setLoanOpen(false);await load();}catch(cause){setError(cause instanceof ApiClientError?cause.message:"Unable to issue book.");}finally{setSaving(false);}}
+ async function returnBook(id:string){setSaving(true);try{await apiFetch(`/library/loans/${id}/return`,{method:"POST"});await load();}catch(cause){setError(cause instanceof ApiClientError?cause.message:"Unable to return book.");}finally{setSaving(false);}}
+ if(loading)return <LoadingState label="Loading library circulation..."/>; return <div className="space-y-6">{error&&<ErrorState message={error} onRetry={()=>void load()}/>}<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard title="Catalogue" value={data.books.length} description={`${metrics.copies} physical copies`} icon={Library}/><StatCard title="Available" value={metrics.available} description="Copies ready to issue" icon={BookOpen}/><StatCard title="Active loans" value={metrics.active} description="Issued or overdue" icon={BookCheck}/><StatCard title="Overdue" value={metrics.overdue} description="Requires follow-up" icon={AlertTriangle}/></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setLoanOpen(true)} disabled={data.books.every(b=>b.availableCopies===0)}>Issue book</Button><Button onClick={()=>setBookOpen(true)}><BookPlus/>Add book</Button></div><Tabs defaultValue="catalog"><TabsList><TabsTrigger value="catalog">Catalogue</TabsTrigger><TabsTrigger value="loans">Loans</TabsTrigger></TabsList><TabsContent value="catalog">{data.books.length===0?<EmptyState icon={BookOpen} title="Catalogue is empty" description="Add the first library book."/>:<Card><CardContent className="overflow-x-auto p-0"><Table><TableHeader><TableRow><TableHead>Book</TableHead><TableHead>ISBN</TableHead><TableHead>Category</TableHead><TableHead>Shelf</TableHead><TableHead>Availability</TableHead></TableRow></TableHeader><TableBody>{data.books.map(b=><TableRow key={b.id}><TableCell><p className="font-medium">{b.title}</p><p className="text-xs text-muted-foreground">{b.author}</p></TableCell><TableCell>{b.isbn}</TableCell><TableCell>{b.category}</TableCell><TableCell>{b.shelfLocation}</TableCell><TableCell><StatusBadge status={b.availableCopies>0?`${b.availableCopies} available`:"Unavailable"}/><p className="mt-1 text-xs text-muted-foreground">{b.totalCopies-b.availableCopies} issued</p></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>}</TabsContent><TabsContent value="loans">{data.loans.length===0?<EmptyState icon={BookCheck} title="No circulation history" description="Issue a book to a registered user."/>:<Card><CardContent className="overflow-x-auto p-0"><Table><TableHeader><TableRow><TableHead>Borrower</TableHead><TableHead>Book</TableHead><TableHead>Due date</TableHead><TableHead>Status</TableHead><TableHead>Fine</TableHead><TableHead></TableHead></TableRow></TableHeader><TableBody>{data.loans.map(l=><TableRow key={l.id}><TableCell><p className="font-medium">{l.borrower.name??"User"}</p><p className="text-xs text-muted-foreground">{l.borrower.email}</p></TableCell><TableCell>{l.book.title}</TableCell><TableCell>{new Date(l.dueAt).toLocaleDateString()}</TableCell><TableCell><StatusBadge status={l.status}/></TableCell><TableCell>₹{l.fineAmount.toFixed(2)}</TableCell><TableCell>{l.status!=="RETURNED"&&<Button size="sm" variant="outline" disabled={saving} onClick={()=>void returnBook(l.id)}><RotateCcw/>Return</Button>}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>}</TabsContent></Tabs>
+ <Dialog open={bookOpen} onOpenChange={setBookOpen}><DialogContent><DialogHeader><DialogTitle>Add catalogue book</DialogTitle><DialogDescription>Inventory begins with every copy available.</DialogDescription></DialogHeader><form onSubmit={addBook} className="space-y-3"><div className="grid gap-3 sm:grid-cols-2">{([["ISBN","isbn"],["Title","title"],["Author","author"],["Category","category"],["Shelf location","shelfLocation"],["Total copies","totalCopies"]] as const).map(([label,key])=><div key={key} className="space-y-1"><Label>{label}</Label><Input required type={key==="totalCopies"?"number":"text"} min={key==="totalCopies"?1:undefined} value={book[key]} onChange={e=>setBook({...book,[key]:e.target.value})}/></div>)}</div><DialogFooter><Button type="button" variant="outline" onClick={()=>setBookOpen(false)}>Cancel</Button><Button disabled={saving} type="submit">Add book</Button></DialogFooter></form></DialogContent></Dialog>
+ <Dialog open={loanOpen} onOpenChange={setLoanOpen}><DialogContent><DialogHeader><DialogTitle>Issue a book</DialogTitle><DialogDescription>Inventory is reserved atomically and cannot go below zero.</DialogDescription></DialogHeader><form onSubmit={issueBook} className="space-y-3"><div className="space-y-1"><Label>Book</Label><Select value={loan.bookId} onValueChange={value=>value&&setLoan({...loan,bookId:value})}><SelectTrigger><SelectValue placeholder="Select available book"/></SelectTrigger><SelectContent>{data.books.filter(b=>b.availableCopies>0).map(b=><SelectItem key={b.id} value={b.id}>{b.title} ({b.availableCopies})</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label>Borrower email</Label><Input required type="email" value={loan.borrowerEmail} onChange={e=>setLoan({...loan,borrowerEmail:e.target.value})}/></div><div className="space-y-1"><Label>Due date</Label><Input required type="date" value={loan.dueAt} onChange={e=>setLoan({...loan,dueAt:e.target.value})}/></div><DialogFooter><Button type="button" variant="outline" onClick={()=>setLoanOpen(false)}>Cancel</Button><Button disabled={saving||!loan.bookId} type="submit">Issue copy</Button></DialogFooter></form></DialogContent></Dialog></div>;
 }

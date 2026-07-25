@@ -1,242 +1,109 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckCircle, Search, UserPlus, Users, UserX } from 'lucide-react';
+import type { RoleCode } from '@/app/generated/prisma/enums';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { LoadingState } from '@/components/feedback/loading-state';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/feedback/empty-state';
-import { AdminUser } from '@/types/common';
-import { USER_ROLES, UserRole } from '@/lib/constants/roles';
-import { UserPlus, Search, UserX, CheckCircle, Users } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import { ErrorState } from '@/components/feedback/error-state';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { ApiClientError, apiFetch } from '@/lib/api-client';
+import type { ApiUser } from '@/lib/api-types';
+import { USER_ROLES } from '@/lib/constants/roles';
 
 export function UserManagementFeature() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('ALL');
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-
-  // Form state
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<UserRole>('FACULTY');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<RoleCode>('FACULTY');
   const [campus, setCampus] = useState('Main Campus');
   const [department, setDepartment] = useState('Administration');
 
-  const loadUsers = async () => {
-    setLoading(true);
+  const loadUsers = useCallback(async () => {
     try {
-      const res = await apiFetch<any[]>('/admin/users');
-      if (res.data) {
-        const mapped: AdminUser[] = res.data.map((u: any) => ({
-          id: u.id,
-          name: u.name || 'User',
-          email: u.email,
-          role: (u.roles?.[0]?.role?.code as UserRole) || 'FACULTY',
-          campus: u.profile?.campus || u.campus || 'Main Campus',
-          department: u.profile?.department || u.department || 'Staff',
-          isActive: u.status === 'ACTIVE',
-          createdAt: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
-        }));
-        setUsers(mapped);
-      }
-    } catch (err) {
-      setUsers([]);
+      const response = await apiFetch<ApiUser[]>('/admin/users?limit=100');
+      setUsers(response.data);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to load users.');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadUsers();
   }, []);
 
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUsers();
+    }, 0);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+    return () => window.clearTimeout(timer);
+  }, [loadUsers]);
+
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    return users.filter((user) =>
+      (user.name?.toLowerCase().includes(query) || user.email.toLowerCase().includes(query)) &&
+      (roleFilter === 'ALL' || user.roles.some(({ role: assignedRole }) => assignedRole.code === roleFilter)),
+    );
+  }, [roleFilter, search, users]);
+
+  async function createUser(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
     try {
-      await apiFetch('/register', {
+      await apiFetch('/admin/users', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password: 'TempPassword123!' }),
+        body: JSON.stringify({ name, email, password, roles: [role], campus, department }),
       });
-      setIsAddUserOpen(false);
+      setDialogOpen(false);
       setName('');
       setEmail('');
+      setPassword('');
       await loadUsers();
-    } catch (err) {
-      // Error handled by apiFetch exception
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to create the user.');
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
-  const toggleUserStatus = async (id: string, currentActive: boolean) => {
+  async function setUserActive(user: ApiUser, active: boolean) {
+    setSaving(true);
     try {
-      await apiFetch(`/admin/users/${id}/roles`, {
+      await apiFetch(`/admin/users/${user.id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ isActive: !currentActive }),
+        body: JSON.stringify({ active }),
       });
       await loadUsers();
-    } catch (err) {
-      // Handle error
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to update account status.');
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      {/* Filter & Search Controls Bar */}
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
+      {error && <ErrorState message={error} onRetry={() => void loadUsers()} />}
+      <Card className="border-border/60 shadow-sm"><CardContent className="flex flex-col items-center justify-between gap-3 p-4 sm:flex-row"><div className="relative w-full sm:w-80"><Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by name or email..." className="h-9 pl-9" /></div><div className="flex w-full gap-3 sm:w-auto"><Select value={roleFilter} onValueChange={(value) => setRoleFilter(value ?? 'ALL')}><SelectTrigger className="w-44"><SelectValue placeholder="All roles" /></SelectTrigger><SelectContent><SelectItem value="ALL">All roles</SelectItem>{Object.values(USER_ROLES).map((value) => <SelectItem key={value} value={value}>{value.replaceAll('_', ' ')}</SelectItem>)}</SelectContent></Select><Button onClick={() => setDialogOpen(true)}><UserPlus /> Add user</Button></div></CardContent></Card>
 
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Filter Role:</span>
-              <Select value={roleFilter} onValueChange={(val) => setRoleFilter(val || 'ALL')}>
-                <SelectTrigger className="h-9 w-[160px] text-xs">
-                  <SelectValue placeholder="All Roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All System Roles</SelectItem>
-                  {Object.keys(USER_ROLES).map((r) => (
-                    <SelectItem key={r} value={r}>{r.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <Card className="overflow-hidden border-border/60 shadow-sm"><CardContent className="p-0 overflow-x-auto">{loading ? <LoadingState label="Loading users..." /> : filtered.length === 0 ? <EmptyState icon={Users} title="No users found" description="No users match the current filters." /> : <Table className="min-w-[760px]"><TableHeader><TableRow><TableHead>User</TableHead><TableHead>Roles</TableHead><TableHead>Campus</TableHead><TableHead>Department</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader><TableBody>{filtered.map((user) => <TableRow key={user.id}><TableCell><p className="font-medium">{user.name ?? 'User'}</p><p className="text-xs text-muted-foreground">{user.email}</p></TableCell><TableCell><div className="flex flex-wrap gap-1">{user.roles.map(({ role: assignedRole }) => <StatusBadge key={assignedRole.code} status={assignedRole.code} />)}</div></TableCell><TableCell>{user.profile?.campus ?? 'Not set'}</TableCell><TableCell>{user.profile?.department ?? 'Not set'}</TableCell><TableCell>{user.status === 'ACTIVE' ? <span className="inline-flex items-center gap-1 text-emerald-600"><CheckCircle className="size-4" /> Active</span> : <span className="inline-flex items-center gap-1 text-rose-600"><UserX className="size-4" /> Suspended</span>}</TableCell><TableCell className="text-right"><Button size="sm" variant="outline" disabled={saving} onClick={() => void setUserActive(user, user.status !== 'ACTIVE')}>{user.status === 'ACTIVE' ? 'Suspend' : 'Activate'}</Button></TableCell></TableRow>)}</TableBody></Table>}</CardContent></Card>
 
-            <Button onClick={() => setIsAddUserOpen(true)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs">
-              <UserPlus className="h-4 w-4" /> Add New User
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Users Table */}
-      <Card className="border-border/60 shadow-sm overflow-hidden">
-        <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          {loading ? (
-            <LoadingState label="Loading users from database..." />
-          ) : filteredUsers.length === 0 ? (
-            <EmptyState
-              icon={<Users className="h-10 w-10 text-muted-foreground" />}
-              title="No Users Found"
-              description="No registered system users matched your filter criteria."
-              action={<Button onClick={() => setIsAddUserOpen(true)} size="sm" className="bg-emerald-600 text-white">Add New User</Button>}
-            />
-          ) : (
-            <Table className="w-full min-w-[600px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40 text-xs">
-                  <TableHead>User Name & Email</TableHead>
-                  <TableHead>System Role</TableHead>
-                  <TableHead>Campus Location</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Account Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="hover:bg-muted/30">
-                    <TableCell>
-                      <div className="font-semibold text-foreground">{user.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{user.email}</div>
-                    </TableCell>
-                    <TableCell><StatusBadge status={user.role} /></TableCell>
-                    <TableCell className="text-muted-foreground">{user.campus}</TableCell>
-                    <TableCell className="text-muted-foreground">{user.department || 'N/A'}</TableCell>
-                    <TableCell>
-                      {user.isActive ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-xs">
-                          <CheckCircle className="h-3.5 w-3.5" /> Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-rose-500 font-medium text-xs">
-                          <UserX className="h-3.5 w-3.5" /> Inactive
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
-                        className={user.isActive ? "text-rose-600 border-rose-500/20 hover:bg-rose-500/10 h-7 px-2 text-[11px]" : "text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10 h-7 px-2 text-[11px]"}
-                      >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add User Modal */}
-      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add New Staff or Admin User</DialogTitle>
-            <DialogDescription className="text-xs">Provision system credentials and role permissions</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateUser} className="space-y-4 py-2 text-xs">
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dr. Jane Doe" className="h-9" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email">University Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane.doe@univ.edu" className="h-9" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Assigned Role</Label>
-              <Select value={role} onValueChange={(val) => setRole((val as UserRole) || 'FACULTY')}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(USER_ROLES).map((r) => (
-                    <SelectItem key={r} value={r}>{r.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="campus">Campus Assignment</Label>
-              <Input id="campus" value={campus} onChange={(e) => setCampus(e.target.value)} className="h-9" />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">Provision Account</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent><DialogHeader><DialogTitle>Create staff account</DialogTitle><DialogDescription>Create credentials, role, and profile assignment.</DialogDescription></DialogHeader><form onSubmit={createUser} className="space-y-4"><div className="space-y-1"><Label htmlFor="new-name">Full name</Label><Input id="new-name" required minLength={2} value={name} onChange={(event) => setName(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-email">Email</Label><Input id="new-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-password">Temporary password</Label><Input id="new-password" type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} /></div><div className="space-y-1"><Label>Role</Label><Select value={role} onValueChange={(value) => value && setRole(value as RoleCode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.values(USER_ROLES).map((value) => <SelectItem key={value} value={value}>{value.replaceAll('_', ' ')}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-2 gap-3"><div className="space-y-1"><Label htmlFor="new-campus">Campus</Label><Input id="new-campus" value={campus} onChange={(event) => setCampus(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-department">Department</Label><Input id="new-department" value={department} onChange={(event) => setDepartment(event.target.value)} /></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" disabled={saving}>Create account</Button></DialogFooter></form></DialogContent></Dialog>
     </div>
   );
 }

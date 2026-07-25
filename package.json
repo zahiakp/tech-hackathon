@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:seed:demo": "prisma db seed && tsx prisma/seed-demo.ts"
+    "db:seed:demo": "prisma db seed && tsx prisma/seed-demo.ts && tsx prisma/seed-operational.ts",
+    "db:seed:operational": "tsx prisma/seed-operational.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

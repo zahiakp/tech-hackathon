@@ -1,184 +1,160 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FileText, Search } from 'lucide-react';
+import type { ComplaintStatus } from '@/app/generated/prisma/enums';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { LoadingState } from '@/components/feedback/loading-state';
 import { EmptyState } from '@/components/feedback/empty-state';
-import { ComplaintRecord } from '@/types/common';
-import { COMPLAINT_STATUS, ComplaintStatus } from '@/lib/constants/roles';
-import { Search, FileText } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import { ErrorState } from '@/components/feedback/error-state';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { ApiClientError, apiFetch } from '@/lib/api-client';
+import type { ApiComplaintDetail, ApiComplaintListItem } from '@/lib/api-types';
+import { COMPLAINT_STATUS } from '@/lib/constants/roles';
+
+const transitions: Partial<Record<ComplaintStatus, ComplaintStatus[]>> = {
+  SUBMITTED: ['IN_REVIEW', 'ESCALATED'],
+  ASSIGNED: ['IN_REVIEW', 'ESCALATED', 'RESOLVED'],
+  IN_REVIEW: ['ESCALATED', 'RESOLVED'],
+  ESCALATED: ['IN_REVIEW', 'RESOLVED'],
+  RESOLVED: ['CLOSED', 'IN_REVIEW'],
+};
 
 export function ComplaintDashboardFeature() {
-  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
+  const [complaints, setComplaints] = useState<ApiComplaintListItem[]>([]);
+  const [selected, setSelected] = useState<ApiComplaintDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedComplaint, setSelectedComplaint] = useState<ComplaintRecord | null>(null);
-  const [noteText, setNoteText] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('ALL');
+  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const loadComplaints = async () => {
-    setLoading(true);
+  const loadComplaints = useCallback(async () => {
     try {
-      const res = await apiFetch<any[]>('/complaints');
-      if (res.data) {
-        const mapped: ComplaintRecord[] = res.data.map((c: any) => ({
-          id: c.id,
-          referenceNumber: c.referenceCode || `CMP-2026-${c.id.slice(0, 4)}`,
-          title: c.title,
-          description: c.description,
-          category: c.category?.name || 'General Administration',
-          status: c.status || 'SUBMITTED',
-          isAnonymous: c.isAnonymous ?? false,
-          studentId: c.reporter?.id,
-          studentName: c.reporter?.name || 'Student',
-          assignedDepartment: c.category?.name || 'Campus Desk',
-          assignedStaffId: c.assignedTo?.id,
-          assignedStaffName: c.assignedTo?.name,
-          createdAt: c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          updatedAt: c.updatedAt ? new Date(c.updatedAt).toISOString().split('T')[0] : '',
-          campus: 'Main Campus',
-          internalNotes: c.messages ? c.messages.map((m: any) => ({
-            id: m.id,
-            author: m.sender?.name || 'Staff',
-            note: m.body,
-            createdAt: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          })) : [],
-        }));
-        setComplaints(mapped);
-      }
-    } catch (err) {
-      setComplaints([]);
+      const response = await apiFetch<ApiComplaintListItem[]>('/complaints?limit=100');
+      setComplaints(response.data);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to load complaints.');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadComplaints();
   }, []);
 
-  const filteredComplaints = complaints.filter((c) => {
-    const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || c.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadComplaints();
+    }, 0);
 
-  const handleUpdateStatus = async (id: string, newStatus: ComplaintStatus) => {
+    return () => window.clearTimeout(timer);
+  }, [loadComplaints]);
+
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    return complaints.filter((complaint) =>
+      (status === 'ALL' || complaint.status === status) &&
+      (complaint.title.toLowerCase().includes(query) || complaint.referenceCode.toLowerCase().includes(query)),
+    );
+  }, [complaints, search, status]);
+
+  async function openComplaint(id: string) {
+    setDetailLoading(true);
     try {
-      await apiFetch(`/complaints/${id}/status`, {
+      const response = await apiFetch<ApiComplaintDetail>(`/complaints/${id}`);
+      setSelected(response.data);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to load complaint details.');
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  async function refreshSelected(id: string) {
+    const response = await apiFetch<ApiComplaintDetail>(`/complaints/${id}`);
+    setSelected(response.data);
+  }
+
+  async function updateStatus(nextStatus: ComplaintStatus) {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/complaints/${selected.id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus, note: 'Status updated by staff desk' }),
+        body: JSON.stringify({ status: nextStatus, note: 'Updated from complaint management desk.' }),
       });
-      await loadComplaints();
-      if (selectedComplaint && selectedComplaint.id === id) {
-        setSelectedComplaint({ ...selectedComplaint, status: newStatus });
-      }
-    } catch (err) {
-      // Error handled
+      await Promise.all([loadComplaints(), refreshSelected(selected.id)]);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to update complaint status.');
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
-  const handleAddNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedComplaint || !noteText) return;
-
+  async function addMessage(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selected || !message.trim()) return;
+    setSaving(true);
     try {
-      await apiFetch(`/complaints/${selectedComplaint.id}/messages`, {
+      await apiFetch(`/complaints/${selected.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ body: noteText }),
+        body: JSON.stringify({ body: message.trim() }),
       });
-      setNoteText('');
-      await loadComplaints();
-    } catch (err) {
-      // Error handled
+      setMessage('');
+      await refreshSelected(selected.id);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to add the message.');
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      {/* Search & Filter Bar */}
+      {error && <ErrorState message={error} onRetry={() => void loadComplaints()} />}
       <Card className="border-border/60 shadow-sm">
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <CardContent className="flex flex-col items-center justify-between gap-3 p-4 sm:flex-row">
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search reference # or title..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search reference or title..." className="h-9 pl-9" />
           </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Filter Status:</span>
-            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || 'ALL')}>
-              <SelectTrigger className="h-9 w-[180px] text-xs">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                {Object.keys(COMPLAINT_STATUS).map((s) => (
-                  <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={status} onValueChange={(value) => setStatus(value ?? 'ALL')}>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              {Object.values(COMPLAINT_STATUS).map((value) => <SelectItem key={value} value={value}>{value.replaceAll('_', ' ')}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
-      {/* Complaints Table */}
-      <Card className="border-border/60 shadow-sm overflow-hidden">
-        <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          {loading ? (
-            <LoadingState label="Fetching complaints from backend..." />
-          ) : filteredComplaints.length === 0 ? (
-            <EmptyState
-              icon={<FileText className="h-10 w-10 text-muted-foreground" />}
-              title="No Campus Complaints Found"
-              description="No registered complaint records match your active query."
-            />
+      <Card className="overflow-hidden border-border/60 shadow-sm">
+        <CardContent className="p-0 overflow-x-auto">
+          {loading ? <LoadingState label="Fetching complaints..." /> : filtered.length === 0 ? (
+            <EmptyState icon={FileText} title="No complaints found" description="No accessible complaints match the current filters." />
           ) : (
-            <Table className="w-full min-w-[550px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40 text-xs">
-                  <TableHead>Ref Number</TableHead>
-                  <TableHead>Title & Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {filteredComplaints.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono font-bold text-foreground">{item.referenceNumber}</TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-foreground">{item.title}</div>
-                      <div className="text-[11px] text-muted-foreground line-clamp-1">{item.description}</div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{item.category}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.assignedDepartment}</TableCell>
-                    <TableCell><StatusBadge status={item.status} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedComplaint(item)}
-                        className="h-7 text-[11px] border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
-                      >
-                        Review & Escalate
-                      </Button>
-                    </TableCell>
+            <Table className="min-w-[720px]">
+              <TableHeader><TableRow><TableHead>Reference</TableHead><TableHead>Title</TableHead><TableHead>Category</TableHead><TableHead>Assigned staff</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {filtered.map((complaint) => (
+                  <TableRow key={complaint.id}>
+                    <TableCell className="font-mono text-xs">{complaint.referenceCode}</TableCell>
+                    <TableCell><p className="font-medium">{complaint.title}</p><p className="line-clamp-1 text-xs text-muted-foreground">{complaint.description}</p></TableCell>
+                    <TableCell>{complaint.category.name}</TableCell>
+                    <TableCell>{complaint.assignedTo?.name ?? 'Unassigned'}</TableCell>
+                    <TableCell><StatusBadge status={complaint.status} /></TableCell>
+                    <TableCell className="text-right"><Button variant="outline" size="sm" disabled={detailLoading} onClick={() => void openComplaint(complaint.id)}>Review</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -187,75 +163,26 @@ export function ComplaintDashboardFeature() {
         </CardContent>
       </Card>
 
-      {/* Complaint Review & Internal Notes Dialog */}
-      <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
-        {selectedComplaint && (
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-base font-bold">{selectedComplaint.referenceNumber}</DialogTitle>
-                <StatusBadge status={selectedComplaint.status} />
-              </div>
-              <DialogDescription className="text-xs">{selectedComplaint.title}</DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-2 text-xs">
-              <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-                <p className="font-semibold text-foreground mb-1">Issue Description:</p>
-                <p className="text-muted-foreground">{selectedComplaint.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-muted-foreground">
-                <div><span className="font-semibold text-foreground">Category:</span> {selectedComplaint.category}</div>
-                <div><span className="font-semibold text-foreground">Assigned Desk:</span> {selectedComplaint.assignedDepartment}</div>
-                <div><span className="font-semibold text-foreground">Campus:</span> {selectedComplaint.campus}</div>
-                <div><span className="font-semibold text-foreground">Complainant:</span> {selectedComplaint.isAnonymous ? 'Anonymous Student' : selectedComplaint.studentName}</div>
-              </div>
-
-              {/* Status Update Buttons */}
-              <div className="space-y-1.5 pt-2 border-t border-border/60">
-                <Label>Update Complaint Status</Label>
-                <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(selectedComplaint.id, 'UNDER_REVIEW')} className="h-7 text-[11px]">
-                    Under Review
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(selectedComplaint.id, 'ASSIGNED')} className="h-7 text-[11px]">
-                    Assign Staff
-                  </Button>
-                  <Button size="sm" onClick={() => handleUpdateStatus(selectedComplaint.id, 'RESOLVED')} className="h-7 text-[11px] bg-emerald-600 text-white">
-                    Mark Resolved
-                  </Button>
+      <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+        {selected && (
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader><DialogTitle>{selected.referenceCode}</DialogTitle><DialogDescription>{selected.title}</DialogDescription></DialogHeader>
+            <div className="space-y-4 text-sm">
+              <div className="rounded-lg border bg-muted/30 p-3"><p>{selected.description}</p></div>
+              <div className="grid gap-2 sm:grid-cols-2"><p><strong>Reporter:</strong> {selected.anonymous ? 'Anonymous' : selected.reporter?.name ?? 'Unknown'}</p><p><strong>Assigned:</strong> {selected.assignedTo?.name ?? 'Unassigned'}</p><p><strong>Category:</strong> {selected.category.name}</p><div><StatusBadge status={selected.status} /></div></div>
+              <div className="space-y-2 border-t pt-3">
+                <Label>Valid next status</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(transitions[selected.status] ?? []).map((nextStatus) => <Button key={nextStatus} size="sm" variant={nextStatus === 'RESOLVED' ? 'default' : 'outline'} disabled={saving} onClick={() => void updateStatus(nextStatus)}>{nextStatus.replaceAll('_', ' ')}</Button>)}
+                  {!transitions[selected.status]?.length && <span className="text-xs text-muted-foreground">No further transitions are available.</span>}
                 </div>
               </div>
-
-              {/* Internal Notes History & Form */}
-              <div className="space-y-2 pt-2 border-t border-border/60">
-                <Label className="font-semibold">Internal Audit Notes</Label>
-                <div className="max-h-32 overflow-y-auto space-y-2 p-2 rounded-lg bg-muted/30">
-                  {selectedComplaint.internalNotes?.length ? (
-                    selectedComplaint.internalNotes.map(n => (
-                      <div key={n.id} className="p-2 rounded border border-border/40 bg-background text-[11px]">
-                        <div className="flex justify-between font-semibold text-foreground">
-                          <span>{n.author}</span>
-                          <span className="text-muted-foreground text-[10px]">{n.createdAt}</span>
-                        </div>
-                        <p className="text-muted-foreground mt-0.5">{n.note}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground italic">No internal notes added yet.</p>
-                  )}
+              <div className="space-y-2 border-t pt-3">
+                <Label>Complaint messages</Label>
+                <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg bg-muted/30 p-2">
+                  {selected.messages.length === 0 ? <p className="text-xs text-muted-foreground">No messages yet.</p> : selected.messages.map((item) => <div key={item.id} className="rounded border bg-background p-2 text-xs"><div className="flex justify-between font-medium"><span>{item.author?.name ?? (item.fromStaff ? 'Staff' : 'Anonymous reporter')}</span><span className="text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</span></div><p className="mt-1 text-muted-foreground">{item.body}</p></div>)}
                 </div>
-
-                <form onSubmit={handleAddNote} className="flex gap-2 mt-2">
-                  <Textarea
-                    placeholder="Add internal resolution note..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    className="h-14 text-xs"
-                  />
-                  <Button type="submit" size="sm" className="bg-emerald-600 text-white self-end">Add Note</Button>
-                </form>
+                <form onSubmit={addMessage} className="space-y-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Add a complaint message..." /><Button type="submit" size="sm" disabled={saving || !message.trim()}>Send message</Button></form>
               </div>
             </div>
           </DialogContent>

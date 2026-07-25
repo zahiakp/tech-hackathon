@@ -1,226 +1,67 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { LoadingState } from '@/components/feedback/loading-state';
-import { EmptyState } from '@/components/feedback/empty-state';
-import { ClassAttendanceRecord, AttendanceStatus } from '@/types/common';
-import { QrCode, CheckCircle2, XCircle, Clock, GraduationCap } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarPlus, CheckCircle2, Clock3, GraduationCap, QrCode, Users } from "lucide-react";
+import type { AttendanceMark } from "@/app/generated/prisma/enums";
+import { EmptyState } from "@/components/feedback/empty-state";
+import { ErrorState } from "@/components/feedback/error-state";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { StatCard } from "@/components/shared/stat-card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ApiClientError, apiFetch } from "@/lib/api-client";
+import type { AttendanceSessionDto } from "@/lib/operational-types";
+
+const marks: AttendanceMark[] = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
 
 export function FacultyAttendanceFeature() {
-  const [record, setRecord] = useState<ClassAttendanceRecord | null>(null);
+  const [sessions, setSessions] = useState<AttendanceSessionDto[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [showQR, setShowQR] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ classCode: "", className: "", subject: "", date: new Date().toISOString().slice(0, 10) });
 
-  const loadAttendance = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
-      const res = await apiFetch<any[]>('/attendance');
-      if (res.data && res.data.length > 0) {
-        const item = res.data[0];
-        setRecord({
-          id: item.id || 'att-801',
-          classCode: item.classCode || 'CS-401',
-          className: item.className || 'Distributed Systems',
-          subject: item.subject || 'Computer Science',
-          facultyId: item.facultyId || 'u-103',
-          facultyName: item.facultyName || 'Faculty Professor',
-          date: item.date || new Date().toISOString().split('T')[0],
-          totalStudents: item.students?.length || 0,
-          presentCount: item.students?.filter((s: any) => s.status === 'PRESENT').length || 0,
-          absentCount: item.students?.filter((s: any) => s.status === 'ABSENT').length || 0,
-          lateCount: item.students?.filter((s: any) => s.status === 'LATE').length || 0,
-          qrActive: true,
-          students: item.students || [],
-        });
-      } else {
-        setRecord(null);
-      }
-    } catch (err) {
-      setRecord(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAttendance();
+      const response = await apiFetch<AttendanceSessionDto[]>("/attendance?limit=100");
+      setSessions(response.data);
+      setSelectedId((current) => current || response.data[0]?.id || "");
+      setError("");
+    } catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to load attendance."); }
+    finally { setLoading(false); }
   }, []);
 
-  const toggleStudentStatus = async (studentId: string, newStatus: AttendanceStatus) => {
-    if (!record) return;
-    const updatedStudents = record.students.map(s => s.studentId === studentId ? { ...s, status: newStatus } : s);
-    const presentCount = updatedStudents.filter(s => s.status === 'PRESENT').length;
-    const absentCount = updatedStudents.filter(s => s.status === 'ABSENT').length;
-    const lateCount = updatedStudents.filter(s => s.status === 'LATE').length;
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
+  const selected = sessions.find((session) => session.id === selectedId);
+  const totals = useMemo(() => selected?.entries.reduce((acc, entry) => ({ ...acc, [entry.status]: acc[entry.status] + 1 }), { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 } as Record<AttendanceMark, number>), [selected]);
 
-    const newRecord = {
-      ...record,
-      students: updatedStudents,
-      presentCount,
-      absentCount,
-      lateCount,
-    };
-
-    setRecord(newRecord);
-
-    try {
-      await apiFetch('/attendance', {
-        method: 'POST',
-        body: JSON.stringify(newRecord),
-      });
-    } catch (err) {
-      // Local state preserved
-    }
-  };
-
-  if (loading) {
-    return <LoadingState label="Loading faculty attendance roster..." />;
+  async function createSession(event: React.FormEvent) {
+    event.preventDefault(); setSaving(true);
+    try { const response = await apiFetch<AttendanceSessionDto>("/attendance", { method: "POST", body: JSON.stringify({ ...form, date: new Date(`${form.date}T09:00:00`).toISOString() }) }); setOpen(false); setSessions((items) => [response.data, ...items]); setSelectedId(response.data.id); setError(""); }
+    catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to create attendance session."); }
+    finally { setSaving(false); }
   }
 
-  if (!record || record.students.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-end">
-          <Button onClick={() => setShowQR(!showQR)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-9 text-xs">
-            <QrCode className="h-4 w-4" /> {showQR ? 'Hide Live QR Code' : 'Generate Dynamic QR Attendance'}
-          </Button>
-        </div>
-        <EmptyState
-          icon={<GraduationCap className="h-10 w-10 text-muted-foreground" />}
-          title="No Class Roster Active"
-          description="There are currently no attendance sessions logged for your assigned courses."
-        />
-      </div>
-    );
+  async function updateEntries(entries: Array<{ studentId: string; status: AttendanceMark }>, qrActive?: boolean) {
+    if (!selected) return; setSaving(true);
+    try { const response = await apiFetch<AttendanceSessionDto>(`/attendance/${selected.id}`, { method: "PATCH", body: JSON.stringify({ entries, ...(qrActive === undefined ? {} : { qrActive }) }) }); setSessions((items) => items.map((item) => item.id === response.data.id ? response.data : item)); setError(""); }
+    catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to update attendance."); }
+    finally { setSaving(false); }
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Top Action Bar */}
-      <div className="flex justify-end">
-        <Button onClick={() => setShowQR(!showQR)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-9 text-xs">
-          <QrCode className="h-4 w-4" /> {showQR ? 'Hide Live QR Code' : 'Generate Dynamic QR Attendance'}
-        </Button>
-      </div>
-
-      {/* Dynamic QR Code Display */}
-      {showQR && (
-        <Card className="border-emerald-500/40 bg-emerald-500/10 shadow-md animate-in fade-in zoom-in duration-200">
-          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center md:text-left">
-              <h3 className="text-base font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2 justify-center md:justify-start">
-                <QrCode className="h-5 w-5 text-emerald-600 animate-spin" /> Dynamic Student QR Code Active
-              </h3>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                Display this code on lecture screen. Student mobile app scans to automatically verify geolocation & attendance.
-              </p>
-              <p className="text-[11px] font-mono text-emerald-600 dark:text-emerald-300 font-semibold">
-                Class: {record.classCode} | Subject: {record.className} | Date: {record.date}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-zinc-950 border border-emerald-500/30 shadow-lg">
-              <div className="h-32 w-32 bg-slate-900 rounded-xl flex items-center justify-center p-2 text-emerald-400 font-mono text-[9px] text-center leading-tight">
-                [ DYNAMIC QR ENCRYPTED HASH ]<br/>{record.classCode}-2026-LIVE
-              </div>
-              <span className="mt-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">Expires in 04:59 mins</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Attendance Metrics */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Present Students</p>
-              <p className="text-2xl font-bold text-emerald-600">{record.presentCount}</p>
-            </div>
-            <CheckCircle2 className="h-8 w-8 text-emerald-500/20" />
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Absent Students</p>
-              <p className="text-2xl font-bold text-rose-600">{record.absentCount}</p>
-            </div>
-            <XCircle className="h-8 w-8 text-rose-500/20" />
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Late Arrival</p>
-              <p className="text-2xl font-bold text-amber-600">{record.lateCount}</p>
-            </div>
-            <Clock className="h-8 w-8 text-amber-500/20" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Student Attendance Roster Table */}
-      <Card className="border-border/60 shadow-sm overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold">Roster: {record.classCode} - {record.className}</CardTitle>
-          <CardDescription className="text-xs">Click status buttons to override or mark attendance</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          <Table className="w-full min-w-[450px]">
-            <TableHeader>
-              <TableRow className="bg-muted/40 text-xs">
-                <TableHead>Roll Number</TableHead>
-                <TableHead>Student Name</TableHead>
-                <TableHead>Attendance Status</TableHead>
-                <TableHead className="text-right">Quick Mark</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-xs">
-              {record.students.map((student) => (
-                <TableRow key={student.studentId} className="hover:bg-muted/30">
-                  <TableCell className="font-mono font-semibold text-foreground">{student.rollNumber}</TableCell>
-                  <TableCell className="font-medium text-foreground">{student.studentName}</TableCell>
-                  <TableCell><StatusBadge status={student.status} /></TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button
-                      size="sm"
-                      variant={student.status === 'PRESENT' ? 'default' : 'outline'}
-                      onClick={() => toggleStudentStatus(student.studentId, 'PRESENT')}
-                      className={student.status === 'PRESENT' ? "bg-emerald-600 text-white h-7 text-[11px]" : "h-7 text-[11px]"}
-                    >
-                      Present
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={student.status === 'ABSENT' ? 'default' : 'outline'}
-                      onClick={() => toggleStudentStatus(student.studentId, 'ABSENT')}
-                      className={student.status === 'ABSENT' ? "bg-rose-600 text-white h-7 text-[11px]" : "h-7 text-[11px] text-rose-600"}
-                    >
-                      Absent
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={student.status === 'LATE' ? 'default' : 'outline'}
-                      onClick={() => toggleStudentStatus(student.studentId, 'LATE')}
-                      className={student.status === 'LATE' ? "bg-amber-600 text-white h-7 text-[11px]" : "h-7 text-[11px] text-amber-600"}
-                    >
-                      Late
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  if (loading) return <LoadingState label="Loading attendance sessions..." />;
+  return <div className="space-y-6">
+    {error && <ErrorState message={error} onRetry={() => void load()} />}
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard title="Sessions" value={sessions.length} description="Recorded class meetings" icon={GraduationCap} /><StatCard title="Students" value={selected?.entries.length ?? 0} description="Roster in selected session" icon={Users} /><StatCard title="Present" value={totals?.PRESENT ?? 0} description="Marked present" icon={CheckCircle2} /><StatCard title="Late / Excused" value={(totals?.LATE ?? 0) + (totals?.EXCUSED ?? 0)} description="Needs review" icon={Clock3} /></div>
+    <Card><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><Select value={selectedId} onValueChange={(value) => value && setSelectedId(value)}><SelectTrigger className="w-full sm:w-96"><SelectValue placeholder="Select a class session" /></SelectTrigger><SelectContent>{sessions.map((session) => <SelectItem key={session.id} value={session.id}>{session.classCode} · {new Date(session.date).toLocaleDateString()}</SelectItem>)}</SelectContent></Select><div className="flex gap-2"><Button variant="outline" disabled={!selected || saving} onClick={() => selected && void updateEntries([], !selected.qrActive)}><QrCode /> {selected?.qrActive ? "Close QR" : "Open QR"}</Button><Button onClick={() => setOpen(true)}><CalendarPlus /> New session</Button></div></CardContent></Card>
+    {!selected ? <EmptyState icon={GraduationCap} title="No attendance sessions" description="Create a session to load the active student roster." /> : <Card><CardHeader className="flex-row items-center justify-between"><div><CardTitle>{selected.className}</CardTitle><p className="text-sm text-muted-foreground">{selected.subject} · {new Date(selected.date).toLocaleString()}</p></div><Button size="sm" disabled={saving || selected.entries.length === 0} onClick={() => void updateEntries(selected.entries.map((entry) => ({ studentId: entry.studentId, status: "PRESENT" })))}>Mark all present</Button></CardHeader><CardContent className="overflow-x-auto p-0"><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Student ID</TableHead><TableHead>Course</TableHead><TableHead className="w-44">Status</TableHead></TableRow></TableHeader><TableBody>{selected.entries.map((entry) => <TableRow key={entry.id}><TableCell><p className="font-medium">{entry.student.name ?? "Student"}</p><p className="text-xs text-muted-foreground">{entry.student.email}</p></TableCell><TableCell>{entry.student.profile?.studentId ?? "—"}</TableCell><TableCell>{entry.student.profile?.course ?? "—"}</TableCell><TableCell><Select value={entry.status} onValueChange={(value) => value && void updateEntries([{ studentId: entry.studentId, status: value as AttendanceMark }])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{marks.map((mark) => <SelectItem key={mark} value={mark}>{mark}</SelectItem>)}</SelectContent></Select></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>}
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create attendance session</DialogTitle><DialogDescription>The active student roster is added automatically and starts as absent.</DialogDescription></DialogHeader><form onSubmit={createSession} className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1"><Label>Class code</Label><Input required value={form.classCode} onChange={(event) => setForm({ ...form, classCode: event.target.value })} /></div><div className="space-y-1"><Label>Date</Label><Input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></div></div><div className="space-y-1"><Label>Class name</Label><Input required value={form.className} onChange={(event) => setForm({ ...form, className: event.target.value })} /></div><div className="space-y-1"><Label>Subject</Label><Input required value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} /></div><DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button disabled={saving} type="submit">Create session</Button></DialogFooter></form></DialogContent></Dialog>
+  </div>;
 }

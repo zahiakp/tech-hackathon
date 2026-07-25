@@ -19,12 +19,27 @@ export interface ApiSuccess<T> {
   };
 }
 
+type ApiFailureBody = {
+  error?: {
+    code?: string;
+    message?: string;
+    fieldErrors?: Record<string, string[]>;
+    requestId?: string;
+  };
+};
+
+function isFailureBody(value: unknown): value is ApiFailureBody {
+  return typeof value === 'object' && value !== null;
+}
+
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
 ): Promise<ApiSuccess<T>> {
-  const url = path.startsWith('/api/') ? path : `/api/v1${path.startsWith('/') ? path : `/${path}`}`;
-  
+  const url = path.startsWith('/api/')
+    ? path
+    : `/api/v1${path.startsWith('/') ? path : `/${path}`}`;
+
   const response = await fetch(url, {
     ...init,
     credentials: 'include',
@@ -35,20 +50,22 @@ export async function apiFetch<T>(
   });
 
   const contentType = response.headers.get('content-type');
-  let body: any = {};
-  if (contentType && contentType.includes('application/json')) {
-    body = await response.json();
-  }
+  const body: unknown = contentType?.includes('application/json')
+    ? await response.json()
+    : {};
 
   if (!response.ok) {
+    const failure = isFailureBody(body) ? body : {};
     throw new ApiClientError(
       response.status,
-      body.error?.code ?? 'UNKNOWN_ERROR',
-      body.error?.message ?? 'The API request failed.',
-      body.error?.fieldErrors,
-      body.error?.requestId ?? response.headers.get('x-request-id') ?? undefined
+      failure.error?.code ?? 'UNKNOWN_ERROR',
+      failure.error?.message ?? 'The API request failed.',
+      failure.error?.fieldErrors,
+      failure.error?.requestId ??
+        response.headers.get('x-request-id') ??
+        undefined,
     );
   }
 
-  return body;
+  return body as ApiSuccess<T>;
 }
