@@ -3,11 +3,11 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "Hackathon | Secure authentication",
-  description: "Next.js authentication powered by Auth.js, Prisma, and Neon.",
+  title: "Campus Governance & Control Desk",
+  description: "Next.js administrative platform with Auth.js, Prisma, and shadcn/ui.",
 };
 
 export default function RootLayout({
@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
