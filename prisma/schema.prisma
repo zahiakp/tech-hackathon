@@ -7,17 +7,541 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum RoleCode {
+  STUDENT
+  FACULTY
+  COUNSELLOR
+  COORDINATOR
+  SECURITY
+  LIBRARY_STAFF
+  ADMIN
+}
+
+enum OtpPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum NotificationType {
+  SYSTEM
+  SOS
+  COMPLAINT
+  APPOINTMENT
+  CHAT
+  SECURITY
+}
+
+enum SosStatus {
+  OPEN
+  ACKNOWLEDGED
+  DISPATCHED
+  RESOLVED
+  CANCELLED_FALSE_ALARM
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ComplaintStatus {
+  SUBMITTED
+  ASSIGNED
+  IN_REVIEW
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum SupportProfileType {
+  MENTOR
+  COUNSELLOR
+}
+
+enum SupportRequestStatus {
+  OPEN
+  MATCHED
+  CLOSED
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  IMMINENT
+}
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  accounts      Account[]
-  sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  emailVerified      DateTime?
+  image              String?
+  passwordHash       String?
+  status             UserStatus @default(ACTIVE)
+  sessionVersion     Int       @default(0)
+  lastLoginAt        DateTime?
+  accounts           Account[]
+  sessions           Session[]
+  profile            UserProfile?
+  roles               UserRole[] @relation("UserRoles")
+  rolesGranted        UserRole[] @relation("RoleGrantedBy")
+  otpChallenges       OtpChallenge[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+  auditLogs           AuditLog[] @relation("AuditActor")
+  sosCreated          SosIncident[] @relation("SosCreator")
+  sosAssignments      SosAssignment[] @relation("SosSecurityUser")
+  sosAssignedBy       SosAssignment[] @relation("SosAssignedBy")
+  sosStatusEvents     SosStatusEvent[] @relation("SosStatusActor")
+  complaintsReported  Complaint[] @relation("ComplaintReporter")
+  complaintsAssigned  Complaint[] @relation("ComplaintAssignee")
+  complaintMessages   ComplaintMessage[] @relation("ComplaintMessageAuthor")
+  complaintStatusEvents ComplaintStatusEvent[] @relation("ComplaintStatusActor")
+  complaintFeedback   ComplaintFeedback[] @relation("ComplaintFeedbackAuthor")
+  complaintAttachments ComplaintAttachment[] @relation("ComplaintAttachmentUploader")
+  supportProfile      SupportProfile?
+  supportRequests     SupportRequest[] @relation("SupportRequestStudent")
+  appointments        Appointment[] @relation("AppointmentStudent")
+  conversations       ConversationParticipant[]
+  chatMessages        ChatMessage[] @relation("ChatMessageSender")
+  resourcesCreated    CampusResource[] @relation("CampusResourceCreator")
+  chatbotInteractions ChatbotInteraction[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  phone       String?
+  studentId   String?  @unique
+  employeeId  String?  @unique
+  department  String?
+  course      String?
+  semester    Int?
+  campus      String?
+  bloodGroup  String?
+  bio         String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  code        RoleCode     @unique
+  name        String
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permission {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime     @default(now())
+}
+
+model UserRole {
+  id           String   @id @default(cuid())
+  userId       String
+  roleId       String
+  assignedById String?
+  user         User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy   User?    @relation("RoleGrantedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+}
+
+model OtpChallenge {
+  id        String     @id @default(cuid())
+  userId    String?
+  email     String
+  purpose   OtpPurpose
+  tokenHash String
+  attempts  Int        @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@index([email, purpose, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  title     String
+  body      String
+  actionUrl String?
+  metadata  Json?
+  readAt    DateTime?
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  requestId  String?
+  ipHash     String?
+  metadata   Json?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model SosIncident {
+  id           String      @id @default(cuid())
+  creatorId    String
+  status       SosStatus   @default(OPEN)
+  latitude     Float
+  longitude    Float
+  accuracy     Float?
+  capturedAt   DateTime
+  note         String?
+  acknowledgedAt DateTime?
+  dispatchedAt DateTime?
+  resolvedAt   DateTime?
+  cancelledAt  DateTime?
+  creator      User        @relation("SosCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  assignments  SosAssignment[]
+  statusEvents SosStatusEvent[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([status, createdAt])
+  @@index([creatorId, createdAt])
+}
+
+model SosAssignment {
+  id             String      @id @default(cuid())
+  incidentId     String
+  securityUserId String
+  assignedById   String?
+  incident       SosIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  securityUser   User        @relation("SosSecurityUser", fields: [securityUserId], references: [id], onDelete: Restrict)
+  assignedBy     User?       @relation("SosAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+
+  @@unique([incidentId, securityUserId])
+  @@index([securityUserId, createdAt])
+}
+
+model SosStatusEvent {
+  id         String      @id @default(cuid())
+  incidentId String
+  fromStatus SosStatus?
+  toStatus   SosStatus
+  actorId    String?
+  note       String?
+  incident   SosIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor      User?       @relation("SosStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime    @default(now())
+
+  @@index([incidentId, createdAt])
+}
+
+model ComplaintCategory {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  slaHours    Int         @default(48)
+  active      Boolean     @default(true)
+  complaints  Complaint[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Complaint {
+  id               String            @id @default(cuid())
+  referenceCode    String            @unique
+  reporterId       String?
+  anonymous        Boolean           @default(false)
+  trackingTokenHash String?          @unique
+  contactEmail     String?
+  categoryId       String
+  title            String
+  description      String
+  priority         ComplaintPriority @default(MEDIUM)
+  status           ComplaintStatus   @default(SUBMITTED)
+  assignedToId     String?
+  escalatedAt      DateTime?
+  resolvedAt       DateTime?
+  closedAt         DateTime?
+  reporter         User?             @relation("ComplaintReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  assignedTo       User?             @relation("ComplaintAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  category         ComplaintCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments      ComplaintAttachment[]
+  messages         ComplaintMessage[]
+  statusEvents     ComplaintStatusEvent[]
+  feedback         ComplaintFeedback?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([reporterId, createdAt])
+  @@index([assignedToId, status, createdAt])
+  @@index([status, priority, createdAt])
+}
+
+model ComplaintAttachment {
+  id           String    @id @default(cuid())
+  complaintId  String
+  uploadedById String?
+  fileKey      String    @unique
+  fileName     String
+  fileUrl      String
+  mimeType     String
+  sizeBytes    Int
+  complaint    Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  uploadedBy   User?     @relation("ComplaintAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+
+  @@index([complaintId, createdAt])
+}
+
+model ComplaintMessage {
+  id          String    @id @default(cuid())
+  complaintId String
+  authorId    String?
+  body        String
+  fromStaff   Boolean   @default(false)
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  author      User?     @relation("ComplaintMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([complaintId, createdAt])
+}
+
+model ComplaintStatusEvent {
+  id          String          @id @default(cuid())
+  complaintId String
+  fromStatus  ComplaintStatus?
+  toStatus    ComplaintStatus
+  actorId     String?
+  note        String?
+  complaint   Complaint       @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  actor       User?           @relation("ComplaintStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+
+  @@index([complaintId, createdAt])
+}
+
+model ComplaintFeedback {
+  id          String    @id @default(cuid())
+  complaintId String    @unique
+  authorId    String?
+  rating      Int
+  comment     String?
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  author      User?     @relation("ComplaintFeedbackAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+}
+
+model SupportProfile {
+  id             String             @id @default(cuid())
+  userId         String             @unique
+  type           SupportProfileType
+  specialties    String[]
+  languages      String[]
+  bio            String?
+  active         Boolean            @default(true)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availability   AvailabilitySlot[]
+  assignedRequests SupportRequest[] @relation("SupportRequestAssignee")
+  appointments   Appointment[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model AvailabilitySlot {
+  id               String         @id @default(cuid())
+  supportProfileId String
+  startAt          DateTime
+  endAt            DateTime
+  booked           Boolean        @default(false)
+  supportProfile   SupportProfile @relation(fields: [supportProfileId], references: [id], onDelete: Cascade)
+  appointment      Appointment?
+  createdAt        DateTime       @default(now())
+
+  @@unique([supportProfileId, startAt, endAt])
+  @@index([supportProfileId, booked, startAt])
+}
+
+model SupportRequest {
+  id                String               @id @default(cuid())
+  studentId         String
+  assignedProfileId String?
+  subject           String
+  description       String?
+  urgency           ComplaintPriority    @default(MEDIUM)
+  status            SupportRequestStatus @default(OPEN)
+  student           User                 @relation("SupportRequestStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  assignedProfile   SupportProfile?      @relation("SupportRequestAssignee", fields: [assignedProfileId], references: [id], onDelete: SetNull)
+  appointment       Appointment?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([studentId, status, createdAt])
+  @@index([assignedProfileId, status])
+}
+
+model Appointment {
+  id               String            @id @default(cuid())
+  studentId        String
+  supportProfileId String
+  slotId           String?           @unique
+  supportRequestId String?           @unique
+  status           AppointmentStatus @default(REQUESTED)
+  startAt          DateTime
+  endAt            DateTime
+  notes            String?
+  student          User              @relation("AppointmentStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  supportProfile   SupportProfile    @relation(fields: [supportProfileId], references: [id], onDelete: Restrict)
+  slot             AvailabilitySlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  supportRequest   SupportRequest?   @relation(fields: [supportRequestId], references: [id], onDelete: SetNull)
+  conversation     Conversation?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([studentId, startAt])
+  @@index([supportProfileId, startAt])
+  @@index([status, startAt])
+}
+
+model Conversation {
+  id           String                    @id @default(cuid())
+  appointmentId String?                  @unique
+  appointment  Appointment?              @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     ChatMessage[]
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId, joinedAt])
+}
+
+model ChatMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model CampusResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  contact     String?
+  url         String?
+  active      Boolean  @default(true)
+  createdById String?
+  createdBy   User?    @relation("CampusResourceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, category])
+}
+
+model ChatbotInteraction {
+  id                String    @id @default(cuid())
+  userId            String?
+  providerRequestId String?
+  intent            String
+  riskLevel         RiskLevel
+  escalated         Boolean   @default(false)
+  resourceIds       String[]
+  inputTokens       Int?
+  outputTokens      Int?
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([riskLevel, createdAt])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  count       Int      @default(0)
+  windowStart DateTime
+  expiresAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([expiresAt])
 }
 
 model Account {
@@ -33,8 +557,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
