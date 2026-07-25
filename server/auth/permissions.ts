@@ -1,4 +1,4 @@
-import type { RoleCode } from "@/app/generated/prisma/client";
+import type { RoleCode } from "@/app/generated/prisma/enums";
 
 export const PERMISSIONS = {
   PROFILE_READ_SELF: "profile.read.self",

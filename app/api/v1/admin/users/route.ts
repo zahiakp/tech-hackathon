@@ -1,4 +1,4 @@
-import { RoleCode } from "@/app/generated/prisma/client";
+import { RoleCode } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { apiHandler, parsePagination } from "@/server/api/handler";
 import { paginated } from "@/server/api/response";

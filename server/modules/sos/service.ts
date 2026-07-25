@@ -1,4 +1,4 @@
-import type { SosStatus } from "@/app/generated/prisma/client";
+import type { SosStatus } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/server/api/response";
 import type { AccessContext } from "@/server/auth/guards";

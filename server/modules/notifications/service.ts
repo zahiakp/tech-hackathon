@@ -1,4 +1,5 @@
-import type { NotificationType, Prisma } from "@/app/generated/prisma/client";
+import type { Prisma } from "@/app/generated/prisma/client";
+import type { NotificationType } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { publishRealtime } from "@/server/integrations/pusher";
 

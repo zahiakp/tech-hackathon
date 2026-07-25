@@ -1,4 +1,4 @@
-import type { RoleCode } from "@/app/generated/prisma/client";
+import type { RoleCode } from "@/app/generated/prisma/enums";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/server/api/response";
