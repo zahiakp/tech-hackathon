@@ -1,4 +1,4 @@
-import type { RoleCode } from "@/app/generated/prisma/client";
+import type { RoleCode } from "@/app/generated/prisma/enums";
 import type { DefaultSession } from "next-auth";
 
 declare module "next-auth" {

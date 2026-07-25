@@ -1026,6 +1026,18 @@ admin@campus.demo
 
 Never enable predictable demo credentials in production.
 
+To create the complete idempotent frontend demo scenario, set
+`DEMO_PASSWORD` to at least eight characters and run:
+
+```bash
+npm run db:seed:demo
+```
+
+This adds role-specific profiles, SOS incidents, complaint states and messages,
+support profiles and slots, an appointment and conversation, notifications,
+audit examples, and chatbot usage metadata. It intentionally does not create
+OTP, password-reset, session, or rate-limit records.
+
 ## 17. Frontend checklist
 
 - Use one shared API client.

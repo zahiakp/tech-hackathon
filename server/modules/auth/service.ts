@@ -1,5 +1,5 @@
 import { hash } from "bcryptjs";
-import type { OtpPurpose } from "@/app/generated/prisma/client";
+import type { OtpPurpose } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/server/api/response";
 import { env } from "@/server/config/env";

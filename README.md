@@ -24,6 +24,7 @@ npm install
 copy .env.example .env
 npm run db:migrate
 npm run db:seed
+npm run db:seed:demo
 npm run dev
 ```
 
@@ -131,6 +132,7 @@ npm run build
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+npm run db:seed:demo
 ```
 
 ## Verification scope
