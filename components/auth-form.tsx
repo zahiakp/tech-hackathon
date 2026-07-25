@@ -102,7 +102,17 @@ export function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="password">Password</Label>
+          {!isRegister && (
+            <Link
+              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              href="/forgot-password"
+            >
+              Forgot password?
+            </Link>
+          )}
+        </div>
         <Input
           autoComplete={isRegister ? "new-password" : "current-password"}
           className="h-11"
