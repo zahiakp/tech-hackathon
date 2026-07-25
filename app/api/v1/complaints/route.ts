@@ -1,4 +1,5 @@
-import { ComplaintStatus, Prisma } from "@/app/generated/prisma/client";
+import { Prisma } from "@/app/generated/prisma/client";
+import { ComplaintStatus } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { apiHandler, parsePagination } from "@/server/api/handler";
 import { created, paginated } from "@/server/api/response";

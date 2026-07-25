@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { hash } from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, RoleCode } from "../app/generated/prisma/client";
+import { PrismaClient } from "../app/generated/prisma/client";
+import { RoleCode } from "../app/generated/prisma/enums";
 import { ROLE_PERMISSIONS } from "../server/auth/permissions";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });

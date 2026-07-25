@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { ComplaintStatus } from "@/app/generated/prisma/client";
+import type { ComplaintStatus } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/server/api/response";
 import type { AccessContext } from "@/server/auth/guards";
