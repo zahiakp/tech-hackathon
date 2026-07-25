@@ -17,7 +17,7 @@ export default async function RegisterPage() {
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/student");
   }
 
   return (

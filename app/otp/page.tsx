@@ -16,7 +16,7 @@ export default async function OtpPage({
   const { email = "", purpose = "PASSWORD_RESET" } = await searchParams;
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/student");
   }
 
   return (

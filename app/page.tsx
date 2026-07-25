@@ -47,7 +47,7 @@ export default async function Home() {
         </Link>
         <div className="flex items-center gap-2">
           {session?.user ? (
-            <Link className={buttonVariants({ size: "lg" })} href="/dashboard">
+            <Link className={buttonVariants({ size: "lg" })} href="/student">
               Open dashboard
               <ArrowRight />
             </Link>
@@ -82,7 +82,7 @@ export default async function Home() {
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link
               className={cn(buttonVariants({ size: "lg" }), "h-11 px-5")}
-              href={session?.user ? "/dashboard" : "/register"}
+              href={session?.user ? "/student" : "/register"}
             >
               {session?.user ? "Go to dashboard" : "Get started"}
               <ArrowRight />
