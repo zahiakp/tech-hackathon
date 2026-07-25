@@ -30,7 +30,7 @@ export function TopHeader({ user, signOutAction }: TopHeaderProps) {
       <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
       <Separator className="hidden h-5 md:block" orientation="vertical" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">Vaxa</p>
+        <p className="truncate text-sm font-semibold">Voxa</p>
         <p className="truncate text-xs text-muted-foreground">
           {user.email ?? "Signed in"}
         </p>

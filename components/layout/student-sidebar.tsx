@@ -29,13 +29,13 @@ export function StudentSidebar() {
             <SidebarMenuButton
               render={<Link href="/student" />}
               size="lg"
-              tooltip="Vaxa"
+              tooltip="Voxa"
             >
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <GraduationCap className="size-4" />
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">Vaxa</span>
+                <span className="truncate font-semibold">Voxa</span>
                 <span className="truncate text-xs text-muted-foreground">
                   Campus services
                 </span>

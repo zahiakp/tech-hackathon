@@ -57,5 +57,5 @@ export const eventRegistrations: EventRegistration[] = [
 ];
 
 export const eventCertificates: EventCertificate[] = [
-  { id: "certificate-01", eventId: "wellbeing-week", issuedAt: "08 Aug 2026", certificateNumber: "VAXA-CERT-2026-01904" },
+  { id: "certificate-01", eventId: "wellbeing-week", issuedAt: "08 Aug 2026", certificateNumber: "VOXA-CERT-2026-01904" },
 ];

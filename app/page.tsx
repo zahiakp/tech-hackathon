@@ -60,13 +60,13 @@ export default async function Home() {
         <nav className="relative mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
           <Link className="flex items-center gap-3 font-bold tracking-tight" href="/">
             <span className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"><ShieldCheck className="size-5" /></span>
-            <span className="text-xl">Vaxa</span>
+            <span className="text-xl">Voxa</span>
           </Link>
           <div className="flex items-center gap-2">
             {session?.user ? (
               <Link className={buttonVariants({ size: "lg" })} href={primaryHref}>Open workspace <ArrowRight /></Link>
             ) : (
-              <><Link className={buttonVariants({ variant: "ghost", size: "lg" })} href="/login">Sign in</Link><Link className={cn(buttonVariants({ size: "lg" }), "hidden sm:inline-flex")} href="/register">Join Vaxa</Link></>
+              <><Link className={buttonVariants({ variant: "ghost", size: "lg" })} href="/login">Sign in</Link><Link className={cn(buttonVariants({ size: "lg" }), "hidden sm:inline-flex")} href="/register">Join Voxa</Link></>
             )}
           </div>
         </nav>
@@ -75,7 +75,7 @@ export default async function Home() {
           <div>
             <Badge className="mb-6 rounded-full px-3 py-1" variant="secondary"><Sparkles /> One campus. One connected experience.</Badge>
             <h1 className="max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.055em] text-balance sm:text-7xl">Campus life works better when support is within reach.</h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">Vaxa connects safety, student care, academics, events, library services, campus ventures, and rewards in one secure platform.</p>
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">Voxa connects safety, student care, academics, events, library services, campus ventures, and rewards in one secure platform.</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link className={cn(buttonVariants({ size: "lg" }), "h-12 rounded-xl px-6")} href={primaryHref}>{session?.user ? "Go to my workspace" : "Get started"}<ArrowRight /></Link>
               {!session?.user && <Link className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 rounded-xl bg-background/70 px-6")} href="/login">Use an existing account</Link>}
@@ -105,9 +105,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="border-y bg-muted/40"><div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[1fr_auto] lg:px-8"><div><p className="text-sm font-semibold text-primary">Ready when campus life gets busy</p><h2 className="mt-2 text-3xl font-bold tracking-tight">Your Vaxa workspace is one sign-in away.</h2><p className="mt-3 max-w-2xl text-muted-foreground">Open the right dashboard automatically based on your role, from student services to campus administration.</p></div><Link className={cn(buttonVariants({ size: "lg" }), "h-12 rounded-xl px-6")} href={primaryHref}>{session?.user ? "Open workspace" : "Create an account"}<ArrowRight /></Link></div></section>
+      <section className="border-y bg-muted/40"><div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[1fr_auto] lg:px-8"><div><p className="text-sm font-semibold text-primary">Ready when campus life gets busy</p><h2 className="mt-2 text-3xl font-bold tracking-tight">Your Voxa workspace is one sign-in away.</h2><p className="mt-3 max-w-2xl text-muted-foreground">Open the right dashboard automatically based on your role, from student services to campus administration.</p></div><Link className={cn(buttonVariants({ size: "lg" }), "h-12 rounded-xl px-6")} href={primaryHref}>{session?.user ? "Open workspace" : "Create an account"}<ArrowRight /></Link></div></section>
 
-      <footer className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-8"><p className="font-semibold text-foreground">Vaxa</p><p>Safety, support, and campus life in one place.</p></footer>
+      <footer className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-8"><p className="font-semibold text-foreground">Voxa</p><p>Safety, support, and campus life in one place.</p></footer>
     </main>
   );
 }

@@ -24,7 +24,7 @@ export default function LexaPage() {
     <div className="grid gap-6">
       <PageHeader
         description="Ask about approved campus resources, support people, and next steps."
-        eyebrow="Vaxa support assistant"
+        eyebrow="Voxa support assistant"
         title="Talk with Lexa"
       />
       <Alert className="border-primary/20 bg-primary/5">

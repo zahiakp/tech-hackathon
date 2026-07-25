@@ -32,7 +32,7 @@ export default async function LoginPage() {
               <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <ShieldCheck className="size-4" />
               </span>
-              Vaxa
+              Voxa
             </Link>
             <Badge variant="secondary">Secure access</Badge>
           </div>
@@ -41,7 +41,7 @@ export default async function LoginPage() {
               Welcome back
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              Sign in with the account stored securely in your Neon database.
+              Sign in with username and password.
             </CardDescription>
           </div>
         </CardHeader>

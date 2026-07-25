@@ -1,6 +1,6 @@
 export const openApiDocument = {
   openapi: "3.1.0",
-  info: { title: "Vaxa Campus Platform API", version: "1.0.0", description: "Versioned backend contract for the Vaxa platform." },
+  info: { title: "Voxa Campus Platform API", version: "1.0.0", description: "Versioned backend contract for the Voxa platform." },
   servers: [{ url: "/api/v1" }],
   components: {
     securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: "authjs.session-token" } },
