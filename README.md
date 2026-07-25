@@ -8,7 +8,7 @@ A modular backend built into the existing Next.js App Router application for the
 - Multiple roles per user and database-backed permissions
 - User profiles, email OTP, password reset, and session invalidation
 - SOS incidents, assignments, state history, alerts, and private real-time events
-- Named and anonymous complaints, hashed tracking tokens, SLA escalation, messages, attachments, assignment, resolution, and feedback
+- Named and anonymous complaints, hashed tracking tokens, messages, attachments, assignment, resolution, and feedback
 - Mentor/counsellor profiles, availability, support requests, atomic appointment booking, and confidential conversations
 - In-app notifications and append-only audit logs
 - A moderated, structured campus-resource chatbot that does not store raw prompts by default
@@ -44,7 +44,6 @@ Copy `.env.example` and configure:
 - `UPLOADTHING_TOKEN`: UploadThing server token
 - `RESEND_API_KEY` and `EMAIL_FROM`: transactional email
 - `OPENAI_API_KEY`: campus-resource chatbot
-- `CRON_SECRET`: protects the complaint SLA cron route
 - `IP_HASH_SECRET`: hashes IP-derived abuse-prevention identifiers
 
 Optional demo accounts are created only when `SEED_DEMO_USERS=true` and `DEMO_PASSWORD` is set before `npm run db:seed`. The seed then creates one account for every role at `<role>@campus.demo`, for example `student@campus.demo` and `admin@campus.demo`.

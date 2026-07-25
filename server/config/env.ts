@@ -16,7 +16,7 @@ const environmentSchema = z.object({
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: optionalString,
   OPENAI_API_KEY: optionalString,
-  CRON_SECRET: optionalString,
+
   IP_HASH_SECRET: optionalString,
 });
 

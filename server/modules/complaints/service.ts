@@ -150,16 +150,3 @@ export async function addComplaintFeedback(id: string, rating: number, comment: 
   if (!allowed) throw new AppError(403, "FORBIDDEN", "You cannot submit feedback for this complaint.");
   return prisma.complaintFeedback.create({ data: { complaintId: id, authorId: user?.id, rating, comment } });
 }
-
-export async function escalateOverdueComplaints() {
-  const open = await prisma.complaint.findMany({ where: { status: { in: ["SUBMITTED", "ASSIGNED", "IN_REVIEW"] } }, include: { category: true } });
-  const overdue = open.filter((item) => item.createdAt.getTime() + item.category.slaHours * 3_600_000 <= Date.now());
-  for (const item of overdue) {
-    await prisma.$transaction([
-      prisma.complaint.update({ where: { id: item.id }, data: { status: "ESCALATED", escalatedAt: new Date() } }),
-      prisma.complaintStatusEvent.create({ data: { complaintId: item.id, fromStatus: item.status, toStatus: "ESCALATED", note: "Automatically escalated after SLA deadline" } }),
-    ]);
-    await publishComplaintUpdate({ ...item, status: "ESCALATED", updatedAt: new Date() });
-  }
-  return { escalated: overdue.length };
-}
