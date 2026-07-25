@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
 import { dashboardPreviewData } from "@/lib/mock-data/dashboard";
 
-export default async function DashboardPage() {
+export default async function StudentPage() {
   const session = await auth();
 
   if (!session?.user) {

@@ -8,7 +8,7 @@ export default async function ForgotPasswordPage() {
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/student");
   }
 
   return (

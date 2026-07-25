@@ -14,8 +14,8 @@ import type { NavigationItem } from "@/types/navigation";
 
 export const studentNavigation = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: "Student",
+    href: "/student",
     icon: LayoutDashboard,
     exact: true,
   },

@@ -61,7 +61,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/student");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");

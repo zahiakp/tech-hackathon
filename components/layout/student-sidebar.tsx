@@ -27,7 +27,7 @@ export function StudentSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={<Link href="/dashboard" />}
+              render={<Link href="/student" />}
               size="lg"
               tooltip="Voxa"
             >
