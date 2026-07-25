@@ -24,7 +24,7 @@ export function PointsHistory({ transactions }: { transactions: PointTransaction
       <Card className="hidden md:block">
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Points</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Activity</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Numix</TableHead></TableRow></TableHeader>
             <TableBody>{transactions.map((transaction) => <TableRow key={transaction.id}><TableCell><p className="font-medium">{transaction.title}</p><p className="text-xs text-muted-foreground">{transaction.description}</p></TableCell><TableCell>{transaction.date}</TableCell><TableCell><StatusBadge icon={transaction.type === "earned" ? ArrowDownLeft : ArrowUpRight} label={transaction.type} tone={transaction.type === "earned" ? "success" : "info"} /></TableCell><TableCell className={cn("text-right font-semibold", transaction.points > 0 && "text-emerald-600")}>{transaction.points > 0 ? "+" : ""}{transaction.points}</TableCell></TableRow>)}</TableBody>
           </Table>
         </CardContent>

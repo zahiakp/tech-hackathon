@@ -1,6 +1,6 @@
 # Backend API - Frontend Integration Guide
 
-This is the frontend contract for the Campus Safety and Support backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
+This is the frontend contract for the Vaxa campus platform backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
 
 Machine-readable documentation:
 
@@ -732,10 +732,10 @@ Only actual participants can send. Admin transcript reads are exceptional and au
 
 Chat is access-controlled and stored in PostgreSQL. Do not describe it as end-to-end encrypted.
 
-## 10. Campus-resource chatbot
+## 10. Lexa campus-resource assistant
 
 ```http
-POST /api/v1/support/chatbot
+POST /api/v1/support/lexa
 ```
 
 ```json
@@ -1076,7 +1076,7 @@ Appointment/chat:
 
 Crisis response:
 
-1. If chatbot returns normal risk, render the approved resources.
+1. If Lexa returns normal risk, render the approved resources.
 2. If `escalate` or `IMMINENT`, stop normal chat.
 3. Display SOS, security, and counsellor actions immediately.
 4. Do not wait for another model call before showing emergency options.
@@ -1106,7 +1106,7 @@ npm run db:seed:demo
 
 This adds role-specific profiles, SOS incidents, complaint states and messages,
 support profiles and slots, an appointment and conversation, notifications,
-audit examples, and chatbot usage metadata. It intentionally does not create
+audit examples, and Lexa usage metadata. It intentionally does not create
 OTP, password-reset, session, or rate-limit records.
 
 ## 18. Frontend checklist
@@ -1122,7 +1122,7 @@ OTP, password-reset, session, or rate-limit records.
 - Subscribe only to authorized private channels.
 - Unsubscribe during component cleanup.
 - Deduplicate real-time records.
-- Render chatbot output as plain text.
+- Render Lexa output as plain text.
 - Provide fallbacks for optional integration 503s.
 - Keep `requestId` in error-reporting UI.
 - Test every workflow with its matching demo role.

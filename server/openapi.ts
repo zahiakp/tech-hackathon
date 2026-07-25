@@ -1,6 +1,6 @@
 export const openApiDocument = {
   openapi: "3.1.0",
-  info: { title: "Campus Safety and Support API", version: "1.0.0", description: "Versioned backend contract for the hackathon MVP." },
+  info: { title: "Vaxa Campus Platform API", version: "1.0.0", description: "Versioned backend contract for the Vaxa platform." },
   servers: [{ url: "/api/v1" }],
   components: {
     securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: "authjs.session-token" } },
@@ -32,7 +32,7 @@ export const openApiDocument = {
     "/support/requests": { get: { summary: "List permitted support requests", security: [{ sessionCookie: [] }], responses: { "200": { description: "Requests" } } }, post: { summary: "Create support request", security: [{ sessionCookie: [] }], responses: { "201": { description: "Created" } } } },
     "/appointments": { get: { summary: "List appointments", security: [{ sessionCookie: [] }], responses: { "200": { description: "Appointments" } } }, post: { summary: "Atomically book a slot", security: [{ sessionCookie: [] }], responses: { "201": { description: "Booked" }, "409": { description: "Slot already booked" } } } },
     "/conversations/{id}/messages": { get: { summary: "List confidential messages", security: [{ sessionCookie: [] }], responses: { "200": { description: "Messages" } } }, post: { summary: "Send confidential message", security: [{ sessionCookie: [] }], responses: { "201": { description: "Created" } } } },
-    "/support/chatbot": { post: { summary: "Constrained campus-resource assistant", security: [{ sessionCookie: [] }], responses: { "200": { description: "Structured resource answer" } } } },
+    "/support/lexa": { post: { summary: "Lexa campus-resource assistant", security: [{ sessionCookie: [] }], responses: { "200": { description: "Structured resource answer" } } } },
     "/notifications": { get: { summary: "List notifications", security: [{ sessionCookie: [] }], responses: { "200": { description: "Notifications" } } } },
     "/appointments/{id}/status": { patch: { summary: "Update appointment status", security: [{ sessionCookie: [] }], responses: { "200": { description: "Updated" }, "409": { description: "Invalid transition" } } } },
     "/admin/users": { get: { summary: "List users", security: [{ sessionCookie: [] }], responses: { "200": { description: "Users" } } }, post: { summary: "Create user with roles", security: [{ sessionCookie: [] }], responses: { "201": { description: "Created" }, "409": { description: "Email already exists" } } } },

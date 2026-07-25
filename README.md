@@ -1,6 +1,6 @@
-# Campus Safety and Support Backend
+# Vaxa Campus Platform
 
-A modular backend built into the existing Next.js App Router application for the 72-hour hackathon MVP. The API is versioned under `/api/v1` and uses Auth.js, Prisma, Neon PostgreSQL, Zod, Pusher Channels, UploadThing, Resend, and the OpenAI Responses API.
+A modular backend built into the existing Next.js App Router application for the 72-hour Vaxa platform. The API is versioned under `/api/v1` and uses Auth.js, Prisma, Neon PostgreSQL, Zod, Pusher Channels, UploadThing, Resend, and the OpenAI Responses API.
 
 ## Delivered modules
 
@@ -11,7 +11,7 @@ A modular backend built into the existing Next.js App Router application for the
 - Named and anonymous complaints, hashed tracking tokens, messages, attachments, assignment, resolution, and feedback
 - Mentor/counsellor profiles, availability, support requests, atomic appointment booking, and confidential conversations
 - In-app notifications and append-only audit logs
-- A moderated, structured campus-resource chatbot that does not store raw prompts by default
+- A moderated, structured Lexa campus-resource assistant that does not store raw prompts by default
 - OpenAPI, shared TypeScript contracts, and frontend mock fixtures
 - Explicit `501 MODULE_NOT_AVAILABLE` scaffolds for attendance, events, rewards, library, blood donors, and startups
 
@@ -44,7 +44,7 @@ Copy `.env.example` and configure:
 - `PUSHER_*` and `NEXT_PUBLIC_PUSHER_*`: server and browser Pusher credentials
 - `UPLOADTHING_TOKEN`: UploadThing server token
 - `RESEND_API_KEY` and `EMAIL_FROM`: transactional email
-- `OPENAI_API_KEY`: campus-resource chatbot
+- `OPENAI_API_KEY`: Lexa campus-resource assistant
 - `IP_HASH_SECRET`: hashes IP-derived abuse-prevention identifiers
 
 Optional demo accounts are created only when `SEED_DEMO_USERS=true` and `DEMO_PASSWORD` is set before `npm run db:seed`. The seed then creates one account for every role at `<role>@campus.demo`, for example `student@campus.demo` and `admin@campus.demo`.
@@ -118,9 +118,9 @@ Precise SOS location is only sent on the authorized security channel and is excl
 
 UploadThing is mounted at `/api/uploadthing`. Complaint images accept JPEG/PNG up to 8 MB. Complaint PDFs use UploadThing's 16 MB provider tier but are rejected by middleware above the application limit of 10 MB. Upload association requires either an authenticated complaint owner/staff member or a valid anonymous tracking token.
 
-## Chatbot safety
+## Lexa safety
 
-`POST /api/v1/support/chatbot` uses `gpt-5.6-luna`, structured output, a stable pseudonymous safety identifier, input/output moderation with `omni-moderation-latest`, approved `CampusResource` rows, and `store: false`. Crisis-like input takes the local emergency-routing path. Names, emails, complaint content, and conversation transcripts are not sent. Stored interaction data contains usage, risk level, selected resources, and provider metadata, not raw chat text.
+`POST /api/v1/support/lexa` uses `gpt-5.6-luna`, structured output, a stable pseudonymous safety identifier, input/output moderation with `omni-moderation-latest`, approved `CampusResource` rows, and `store: false`. Crisis-like input takes the local emergency-routing path. Names, emails, complaint content, and conversation transcripts are not sent. Stored interaction data contains usage, risk level, selected resources, and provider metadata, not raw chat text.
 
 ## Commands
 

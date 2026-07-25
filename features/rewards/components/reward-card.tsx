@@ -15,8 +15,8 @@ export function RewardCard({ reward, balance }: { reward: Reward; balance: numbe
         <CardTitle>{reward.title}</CardTitle>
         <CardDescription>{reward.description}</CardDescription>
       </CardHeader>
-      <CardContent><p className="text-2xl font-bold">{reward.cost.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">points</span></p><p className="mt-1 text-sm text-muted-foreground">{reward.category}</p></CardContent>
-      <CardFooter><Link aria-disabled={!affordable} className={buttonVariants({ variant: affordable ? "default" : "outline", className: !affordable ? "pointer-events-none w-full opacity-50" : "w-full" })} href={affordable ? `/rewards/${reward.id}/redeem` : "#"}>{affordable ? "Redeem reward" : "More points needed"}</Link></CardFooter>
+      <CardContent><p className="text-2xl font-bold">{reward.cost.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">Numix</span></p><p className="mt-1 text-sm text-muted-foreground">{reward.category}</p></CardContent>
+      <CardFooter><Link aria-disabled={!affordable} className={buttonVariants({ variant: affordable ? "default" : "outline", className: !affordable ? "pointer-events-none w-full opacity-50" : "w-full" })} href={affordable ? `/rewards/${reward.id}/redeem` : "#"}>{affordable ? "Redeem reward" : "More Numix needed"}</Link></CardFooter>
     </Card>
   );
 }

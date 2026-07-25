@@ -25,7 +25,7 @@ export function PointsSummaryCard({ points }: PointsSummaryCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Award className="size-4 text-primary" aria-hidden="true" />
-          Current points
+          Current Numix
         </CardTitle>
         <CardDescription>Your campus participation balance</CardDescription>
       </CardHeader>
@@ -42,7 +42,7 @@ export function PointsSummaryCard({ points }: PointsSummaryCardProps) {
         <div className="space-y-2">
           <Progress value={milestoneProgress} />
           <p className="text-xs text-muted-foreground">
-            {points.nextMilestone - points.balance} points to the next milestone
+            {points.nextMilestone - points.balance} Numix to the next milestone
           </p>
         </div>
       </CardContent>

@@ -23,7 +23,7 @@ function crisisResponse(resources: Array<{ id: string; title: string; contact: s
   return {
     intent: "emergency_support",
     riskLevel: "IMMINENT",
-    answer: "Your safety comes first. Use the SOS button now, contact campus security, or go to the nearest safe person. This assistant is not an emergency service.",
+    answer: "Your safety comes first. Use the SOS button now, contact campus security, or go to the nearest safe person. Lexa is not an emergency service.",
     recommendedResourceIds: resources.slice(0, 3).map(({ id }) => id),
     escalate: true,
   };
@@ -36,7 +36,7 @@ export async function campusChatbot(user: AccessContext, message: string) {
     await logInteraction(user.id, output);
     return { ...output, recommendedResources: resources.filter(({ id }) => output.recommendedResourceIds.includes(id)) };
   }
-  if (!env.OPENAI_API_KEY) throw new AppError(503, "CHATBOT_NOT_CONFIGURED", "The campus assistant is not configured.");
+  if (!env.OPENAI_API_KEY) throw new AppError(503, "CHATBOT_NOT_CONFIGURED", "Lexa is not configured.");
 
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   const moderation = await client.moderations.create({ model: "omni-moderation-latest", input: message });
@@ -65,7 +65,7 @@ export async function campusChatbot(user: AccessContext, message: string) {
   });
 
   let output = response.output_parsed;
-  if (!output) throw new AppError(502, "CHATBOT_INVALID_RESPONSE", "The campus assistant returned an invalid response.");
+  if (!output) throw new AppError(502, "CHATBOT_INVALID_RESPONSE", "Lexa returned an invalid response.");
   output = { ...output, recommendedResourceIds: output.recommendedResourceIds.filter((id) => resources.some((resource) => resource.id === id)) };
   const outputModeration = await client.moderations.create({ model: "omni-moderation-latest", input: output.answer });
   if (outputModeration.results[0]?.flagged) output = crisisResponse(resources);

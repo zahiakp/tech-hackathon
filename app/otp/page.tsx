@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { landingPathForRoles } from "@/lib/auth-landing";
 import { AuthShell } from "@/components/layout/auth-shell";
 import { OtpVerificationForm } from "@/features/auth/components/otp-verification-form";
 
@@ -16,7 +17,7 @@ export default async function OtpPage({
   const { email = "", purpose = "PASSWORD_RESET" } = await searchParams;
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect(landingPathForRoles(session.user.roles));
   }
 
   return (
