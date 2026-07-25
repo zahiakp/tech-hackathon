@@ -38,7 +38,7 @@ export function AuthShell({
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <ShieldCheck className="size-4" aria-hidden="true" />
               </span>
-              <span className="truncate">Voxa</span>
+              <span className="truncate">Vaxa</span>
             </Link>
             <Badge className="shrink-0" variant="secondary">
               {badge}

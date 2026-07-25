@@ -1,12 +1,13 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { landingPathForRoles } from "@/lib/auth-landing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +62,8 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
 
-      router.push("/student");
+      const session = await getSession();
+      router.replace(landingPathForRoles(session?.user.roles ?? []));
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");

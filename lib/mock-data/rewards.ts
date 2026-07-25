@@ -17,7 +17,7 @@ export const pointTransactions: PointTransaction[] = [
 export const rewardsPreview: Reward[] = [
   { id: "cafe-voucher", title: "Campus café voucher", category: "Food", description: "₹100 credit at participating campus cafés.", cost: 250, stock: 18 },
   { id: "library-priority", title: "Priority reservation pass", category: "Library", description: "One priority reservation for an available library title.", cost: 400, stock: 6 },
-  { id: "event-merch", title: "Voxa event merchandise", category: "Merchandise", description: "Limited-edition campus event tote bag.", cost: 650, stock: 4 },
+  { id: "event-merch", title: "Vaxa event merchandise", category: "Merchandise", description: "Limited-edition campus event tote bag.", cost: 650, stock: 4 },
   { id: "printing-credit", title: "Printing credit", category: "Campus", description: "Add 50 pages to your campus print allowance.", cost: 180, stock: 32 },
 ];
 

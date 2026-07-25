@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { auth } from "@/auth";
+import { landingPathForRoles } from "@/lib/auth-landing";
 import { AuthForm } from "@/components/auth-form";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,7 +18,7 @@ export default async function LoginPage() {
   const session = await auth();
 
   if (session?.user) {
-    redirect("/student");
+    redirect(landingPathForRoles(session.user.roles));
   }
 
   return (
@@ -31,7 +32,7 @@ export default async function LoginPage() {
               <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <ShieldCheck className="size-4" />
               </span>
-              Hackathon
+              Vaxa
             </Link>
             <Badge variant="secondary">Secure access</Badge>
           </div>

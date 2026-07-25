@@ -1,6 +1,6 @@
 # Backend API - Frontend Integration Guide
 
-This is the frontend contract for the Campus Safety and Support backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
+This is the frontend contract for the Vaxa campus platform backend. It covers authentication, API payloads, permissions, uploads, real-time events, error handling, and complete user flows.
 
 Machine-readable documentation:
 
@@ -732,10 +732,10 @@ Only actual participants can send. Admin transcript reads are exceptional and au
 
 Chat is access-controlled and stored in PostgreSQL. Do not describe it as end-to-end encrypted.
 
-## 10. Campus-resource chatbot
+## 10. Lexa campus-resource assistant
 
 ```http
-POST /api/v1/support/chatbot
+POST /api/v1/support/lexa
 ```
 
 ```json
@@ -894,6 +894,41 @@ GET /api/v1/admin/users?page=1&limit=20
 GET /api/v1/admin/users?role=SECURITY
 ```
 
+Create a user with one or more roles:
+
+```http
+POST /api/v1/admin/users
+```
+
+```json
+{
+  "name": "Security Officer",
+  "email": "officer@campus.edu",
+  "password": "temporary-password",
+  "roles": ["SECURITY"],
+  "campus": "Main Campus",
+  "department": "Campus Security"
+}
+```
+
+The password must contain at least 8 characters. A duplicate email returns
+409 CONFLICT.
+
+Activate or suspend an account:
+
+```http
+PATCH /api/v1/admin/users/:id/status
+```
+
+```json
+{
+  "active": false
+}
+```
+
+Changing account status increments sessionVersion, invalidating existing
+sessions. An administrator cannot suspend their own account.
+
 Replace all roles:
 
 ```http
@@ -914,7 +949,48 @@ Audit log:
 GET /api/v1/audit?page=1&limit=20
 ```
 
-## 14. Health, deferred modules, and errors
+## 14. Operational campus modules
+
+All routes below use the normal `{ data, meta? }` envelope and require an Auth.js session.
+
+### Attendance
+
+- `GET /api/v1/attendance?limit=100` — Faculty see their sessions; Admin sees all.
+- `POST /api/v1/attendance` — creates a class session and adds every active Student as `ABSENT`.
+- `PATCH /api/v1/attendance/:id` — updates `qrActive` and/or an `entries` array containing `studentId` and `status`.
+- Marks: `PRESENT`, `ABSENT`, `LATE`, `EXCUSED`.
+
+### Events
+
+- `GET /api/v1/events`, `POST /api/v1/events`.
+- `PATCH /api/v1/events/:id` with `{ "status": "ONGOING" }`.
+- `POST /api/v1/events/:id/registrations` — automatically uses `WAITLISTED` after capacity is reached.
+- `POST /api/v1/events/:id/check-in` with `{ "studentId": "..." }`.
+- Statuses: `DRAFT`, `UPCOMING`, `ONGOING`, `COMPLETED`, `CANCELLED`.
+
+### Library
+
+- `GET /api/v1/library` returns `{ books, loans }` and refreshes overdue loan state.
+- `POST /api/v1/library` creates a catalogue book and available-copy inventory.
+- `POST /api/v1/library/loans` with `bookId`, `borrowerEmail`, and `dueAt` atomically reserves a copy.
+- `POST /api/v1/library/loans/:id/return` restores inventory and calculates a daily overdue fine.
+
+### Blood donor network
+
+- `GET /api/v1/blood-donors` returns requests and only available donors who consented to contact.
+- `POST /api/v1/blood-donors` uses `type: "donor"` for a personal donor profile or `type: "request"` for an Admin request.
+- `PATCH /api/v1/blood-donors/requests/:id` updates `OPEN`, `MATCHED`, `FULFILLED`, or `CANCELLED`.
+- Never expose donors whose `contactConsent` is false.
+
+### Campus startups
+
+- `GET /api/v1/startups`, `POST /api/v1/startups`.
+- Admin may provide `founderEmail` when creating a profile for a student.
+- `PATCH /api/v1/startups/:id` updates the stage and optional `assignedMentor`.
+- Stages: `SUBMITTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `INCUBATING`.
+
+Role access: Faculty manages attendance, Library Staff manages circulation, Students can register for events and maintain donor/startup submissions through the API, and Admin manages every operational module.
+## 15. Health, deferred modules, and errors
 
 Health:
 
@@ -927,12 +1003,7 @@ It returns `status`, timestamp, and configuration booleans for database, auth, P
 These intentionally return `501 MODULE_NOT_AVAILABLE`:
 
 ```text
-GET /api/v1/attendance
-GET /api/v1/events
 GET /api/v1/rewards
-GET /api/v1/library
-GET /api/v1/blood-donors
-GET /api/v1/startups
 ```
 
 Show “Coming soon”; do not treat 501 as an empty successful list.
@@ -956,7 +1027,7 @@ Show “Coming soon”; do not treat 501 as an empty successful list.
 | `503 CHATBOT_NOT_CONFIGURED` | Show static campus resources |
 | `500 INTERNAL_ERROR` | Generic error; retain `requestId` |
 
-## 15. Complete frontend flows
+## 16. Complete frontend flows
 
 Student startup:
 
@@ -1005,12 +1076,12 @@ Appointment/chat:
 
 Crisis response:
 
-1. If chatbot returns normal risk, render the approved resources.
+1. If Lexa returns normal risk, render the approved resources.
 2. If `escalate` or `IMMINENT`, stop normal chat.
 3. Display SOS, security, and counsellor actions immediately.
 4. Do not wait for another model call before showing emergency options.
 
-## 16. Demo users
+## 17. Demo users
 
 When seeded with `SEED_DEMO_USERS=true` and `DEMO_PASSWORD`, these users share the configured password:
 
@@ -1035,10 +1106,10 @@ npm run db:seed:demo
 
 This adds role-specific profiles, SOS incidents, complaint states and messages,
 support profiles and slots, an appointment and conversation, notifications,
-audit examples, and chatbot usage metadata. It intentionally does not create
+audit examples, and Lexa usage metadata. It intentionally does not create
 OTP, password-reset, session, or rate-limit records.
 
-## 17. Frontend checklist
+## 18. Frontend checklist
 
 - Use one shared API client.
 - Handle field-level validation errors.
@@ -1051,7 +1122,7 @@ OTP, password-reset, session, or rate-limit records.
 - Subscribe only to authorized private channels.
 - Unsubscribe during component cleanup.
 - Deduplicate real-time records.
-- Render chatbot output as plain text.
+- Render Lexa output as plain text.
 - Provide fallbacks for optional integration 503s.
 - Keep `requestId` in error-reporting UI.
 - Test every workflow with its matching demo role.

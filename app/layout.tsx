@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "Campus Governance & Control Desk",
-  description: "Next.js administrative platform with Auth.js, Prisma, and shadcn/ui.",
+  title: "Vaxa | Connected Campus",
+  description: "Vaxa connects campus safety, student support, academics, events, library services, Numix rewards, and more.",
 };
 
 export default function RootLayout({

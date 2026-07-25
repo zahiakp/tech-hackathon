@@ -1,192 +1,35 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { LoadingState } from '@/components/feedback/loading-state';
-import { EmptyState } from '@/components/feedback/empty-state';
-import { EventRecord } from '@/types/common';
-import { Plus, Scan, FileCheck, CalendarDays } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarDays, CheckCircle2, MapPin, Plus, TicketCheck, Users } from "lucide-react";
+import type { CampusEventStatus } from "@/app/generated/prisma/enums";
+import { EmptyState } from "@/components/feedback/empty-state";
+import { ErrorState } from "@/components/feedback/error-state";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { StatCard } from "@/components/shared/stat-card";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { ApiClientError, apiFetch } from "@/lib/api-client";
+import type { CampusEventDto } from "@/lib/operational-types";
 
+const statuses: CampusEventStatus[] = ["DRAFT", "UPCOMING", "ONGOING", "COMPLETED", "CANCELLED"];
 export function EventOrganiserDashboardFeature() {
-  const [events, setEvents] = useState<EventRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Hackathon & Tech');
-  const [date, setDate] = useState('2026-08-01');
-  const [venue, setVenue] = useState('Main Auditorium');
-  const [capacity, setCapacity] = useState(250);
-  const [rewardPoints, setRewardPoints] = useState(100);
-
-  const loadEvents = async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch<any[]>('/events');
-      if (res.data) {
-        const mapped: EventRecord[] = res.data.map((evt: any) => ({
-          id: evt.id,
-          title: evt.title,
-          description: evt.description || 'Campus event',
-          category: evt.category || 'Tech & Hackathon',
-          organiserName: evt.organiserName || 'Event Organiser',
-          date: evt.date ? new Date(evt.date).toISOString().split('T')[0] : '',
-          venue: evt.venue || 'Main Auditorium',
-          capacity: evt.capacity || 100,
-          registeredCount: evt.registeredCount || 0,
-          attendedCount: evt.attendedCount || 0,
-          rewardPoints: evt.rewardPoints || 100,
-          status: evt.status || 'UPCOMING',
-          subSessions: evt.subSessions || [],
-        }));
-        setEvents(mapped);
-      }
-    } catch (err) {
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiFetch('/events', {
-        method: 'POST',
-        body: JSON.stringify({
-          title,
-          category,
-          date,
-          venue,
-          capacity,
-          rewardPoints,
-        }),
-      });
-      setIsAddEventOpen(false);
-      setTitle('');
-      await loadEvents();
-    } catch (err) {
-      // Error handled
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Events Listing Table */}
-      <Card className="border-border/60 shadow-sm overflow-hidden">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-bold">Active & Upcoming Campus Events</CardTitle>
-            <CardDescription className="text-xs">Capacity management, registrations & student point distribution</CardDescription>
-          </div>
-          <Button onClick={() => setIsAddEventOpen(true)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs">
-            <Plus className="h-4 w-4" /> Create New Event
-          </Button>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          {loading ? (
-            <LoadingState label="Fetching campus events..." />
-          ) : events.length === 0 ? (
-            <EmptyState
-              icon={<CalendarDays className="h-10 w-10 text-muted-foreground" />}
-              title="No Campus Events Created"
-              description="There are currently no events registered in the system."
-              action={<Button onClick={() => setIsAddEventOpen(true)} size="sm" className="bg-emerald-600 text-white">Create New Event</Button>}
-            />
-          ) : (
-            <Table className="w-full min-w-[600px]">
-              <TableHeader>
-                <TableRow className="bg-muted/40 text-xs">
-                  <TableHead>Event Title</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Date & Venue</TableHead>
-                  <TableHead>Capacity / Reg.</TableHead>
-                  <TableHead>Reward Points</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {events.map((evt) => (
-                  <TableRow key={evt.id} className="hover:bg-muted/30">
-                    <TableCell className="font-semibold text-foreground">{evt.title}</TableCell>
-                    <TableCell className="text-muted-foreground">{evt.category}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <div>{evt.date}</div>
-                      <div className="text-[11px] font-mono">{evt.venue}</div>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      <span className="font-bold text-emerald-600">{evt.registeredCount}</span> / {evt.capacity}
-                    </TableCell>
-                    <TableCell className="font-bold text-amber-600">+{evt.rewardPoints} pts</TableCell>
-                    <TableCell><StatusBadge status={evt.status} /></TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-emerald-500/30 text-emerald-600">
-                        <Scan className="h-3 w-3" /> Scan ID
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-purple-500/30 text-purple-600">
-                        <FileCheck className="h-3 w-3" /> Certificates
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add Event Modal */}
-      <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create New Campus Event</DialogTitle>
-            <DialogDescription className="text-xs">Set event capacity, date & reward points</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateEvent} className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <Label>Event Title</Label>
-              <Input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. AI Innovation Summit 2026" className="h-9" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Event Date</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" />
-              </div>
-              <div className="space-y-1">
-                <Label>Max Capacity</Label>
-                <Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="h-9" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Venue Location</Label>
-              <Input value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="e.g. Main Auditorium" className="h-9" />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Reward Points Awarded</Label>
-              <Input type="number" value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value))} className="h-9" />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddEventOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-emerald-600 text-white">Publish Event</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+  const [events, setEvents] = useState<CampusEventDto[]>([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", category: "Technology", date: "", venue: "", capacity: "100", rewardPoints: "50" });
+  const load = useCallback(async () => { try { const response = await apiFetch<CampusEventDto[]>("/events?limit=100"); setEvents(response.data); setError(""); } catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to load events."); } finally { setLoading(false); } }, []);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
+  const metrics = useMemo(() => ({ registrations: events.reduce((sum, item) => sum + item.registrations.filter((entry) => entry.status !== "CANCELLED").length, 0), checkIns: events.reduce((sum, item) => sum + item.registrations.filter((entry) => entry.status === "CHECKED_IN").length, 0) }), [events]);
+  async function createEvent(event: React.FormEvent) { event.preventDefault(); setSaving(true); try { await apiFetch("/events", { method: "POST", body: JSON.stringify({ ...form, date: new Date(form.date).toISOString(), capacity: Number(form.capacity), rewardPoints: Number(form.rewardPoints), status: "UPCOMING" }) }); setOpen(false); setForm({ title: "", description: "", category: "Technology", date: "", venue: "", capacity: "100", rewardPoints: "50" }); await load(); } catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to create event."); } finally { setSaving(false); } }
+  async function updateStatus(id: string, status: CampusEventStatus) { setSaving(true); try { await apiFetch(`/events/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }); await load(); } catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to update event."); } finally { setSaving(false); } }
+  async function checkIn(eventId: string, studentId: string) { setSaving(true); try { await apiFetch(`/events/${eventId}/check-in`, { method: "POST", body: JSON.stringify({ studentId }) }); await load(); } catch (cause) { setError(cause instanceof ApiClientError ? cause.message : "Unable to check in participant."); } finally { setSaving(false); } }
+  if (loading) return <LoadingState label="Loading campus events..." />;
+  return <div className="space-y-6">{error && <ErrorState message={error} onRetry={() => void load()} />}<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard title="Events" value={events.length} description="All event records" icon={CalendarDays} /><StatCard title="Upcoming" value={events.filter((event) => event.status === "UPCOMING").length} description="Open for registrations" icon={TicketCheck} /><StatCard title="Registrations" value={metrics.registrations} description="Confirmed and waitlisted" icon={Users} /><StatCard title="Checked in" value={metrics.checkIns} description="Verified participation" icon={CheckCircle2} /></div><div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus /> Create event</Button></div>{events.length === 0 ? <EmptyState icon={CalendarDays} title="No events yet" description="Create an event to manage capacity and check-in." /> : <Card><CardContent className="overflow-x-auto p-0"><Table className="min-w-[920px]"><TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Date / venue</TableHead><TableHead>Capacity</TableHead><TableHead>Participation</TableHead><TableHead>Status</TableHead><TableHead>Check-in</TableHead></TableRow></TableHeader><TableBody>{events.map((item) => { const registered = item.registrations.filter((entry) => entry.status === "REGISTERED" || entry.status === "CHECKED_IN"); const next = item.registrations.find((entry) => entry.status === "REGISTERED"); return <TableRow key={item.id}><TableCell><p className="font-medium">{item.title}</p><p className="max-w-xs truncate text-xs text-muted-foreground">{item.category} · {item.rewardPoints} Numix</p></TableCell><TableCell><p>{new Date(item.date).toLocaleString()}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="size-3" />{item.venue}</p></TableCell><TableCell>{registered.length}/{item.capacity}<p className="text-xs text-muted-foreground">{Math.max(0, item.capacity - registered.length)} available</p></TableCell><TableCell>{item.registrations.filter((entry) => entry.status === "CHECKED_IN").length} checked in<p className="text-xs text-muted-foreground">{item.registrations.filter((entry) => entry.status === "WAITLISTED").length} waitlisted</p></TableCell><TableCell><Select value={item.status} onValueChange={(value) => value && void updateStatus(item.id, value as CampusEventStatus)}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent>{statuses.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent></Select></TableCell><TableCell>{next ? <Button size="sm" variant="outline" disabled={saving} onClick={() => void checkIn(item.id, next.studentId)}>Check in {next.student.name?.split(" ")[0] ?? "student"}</Button> : <StatusBadge status="No pending check-ins" />}</TableCell></TableRow>; })}</TableBody></Table></CardContent></Card>}
+  <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create campus event</DialogTitle><DialogDescription>Publish capacity, venue, rewards, and registration details.</DialogDescription></DialogHeader><form onSubmit={createEvent} className="space-y-4"><div className="space-y-1"><Label>Title</Label><Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div><div className="space-y-1"><Label>Description</Label><Textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>Category</Label><Input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div><div className="space-y-1"><Label>Date and time</Label><Input required type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div><div className="space-y-1"><Label>Venue</Label><Input required value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} /></div><div className="space-y-1"><Label>Capacity</Label><Input required type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} /></div><div className="space-y-1"><Label>Reward Numix</Label><Input required type="number" min="0" value={form.rewardPoints} onChange={(e) => setForm({ ...form, rewardPoints: e.target.value })} /></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button disabled={saving} type="submit">Publish event</Button></DialogFooter></form></DialogContent></Dialog></div>;
 }

@@ -4,5 +4,5 @@ import { RewardCatalog } from "@/features/rewards/components/reward-catalog";
 import { pointBalancePreview, rewardsPreview } from "@/lib/mock-data/rewards";
 
 export default function RewardsCatalogPage() {
-  return <div className="grid gap-6"><PageHeader description={`You currently have ${pointBalancePreview.toLocaleString()} preview points available.`} eyebrow="Rewards catalogue" title="Available rewards" /><PreviewAlert description="Stock counts and point costs are preview data." /><RewardCatalog balance={pointBalancePreview} rewards={rewardsPreview} /></div>;
+  return <div className="grid gap-6"><PageHeader description={`You currently have ${pointBalancePreview.toLocaleString()} preview Numix available.`} eyebrow="Rewards catalogue" title="Available rewards" /><PreviewAlert description="Stock counts and Numix costs are preview data." /><RewardCatalog balance={pointBalancePreview} rewards={rewardsPreview} /></div>;
 }

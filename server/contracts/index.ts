@@ -14,3 +14,4 @@ export * from "@/server/modules/auth/schemas";
 export * from "@/server/modules/sos/schemas";
 export * from "@/server/modules/complaints/schemas";
 export * from "@/server/modules/support/schemas";
+export * from "@/server/modules/operational/schemas";

@@ -52,7 +52,7 @@ export const studentNavigation = [
     icon: CalendarCheck2,
   },
   {
-    title: "Rewards",
+    title: "Numix",
     href: "/rewards",
     icon: Award,
   },

@@ -1,196 +1,82 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { LoadingState } from '@/components/feedback/loading-state';
-import { EmptyState } from '@/components/feedback/empty-state';
-import { CounsellorAppointment } from '@/types/common';
+import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Lock, UserCheck } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
+import type { AppointmentStatus } from '@/app/generated/prisma/enums';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { EmptyState } from '@/components/feedback/empty-state';
+import { ErrorState } from '@/components/feedback/error-state';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { ApiClientError, apiFetch } from '@/lib/api-client';
+import type { ApiAppointment } from '@/lib/api-types';
 
 export function CounsellorDashboardFeature() {
-  const [appointments, setAppointments] = useState<CounsellorAppointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedApp, setSelectedApp] = useState<CounsellorAppointment | null>(null);
+  const [appointments, setAppointments] = useState<ApiAppointment[]>([]);
+  const [selected, setSelected] = useState<ApiAppointment | null>(null);
   const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const loadAppointments = async () => {
-    setLoading(true);
+  const loadAppointments = useCallback(async () => {
     try {
-      const res = await apiFetch<any[]>('/appointments');
-      if (res.data) {
-        const mapped: CounsellorAppointment[] = res.data.map((app: any) => ({
-          id: app.id,
-          studentId: app.student?.id || 'std-101',
-          studentName: app.student?.name || 'Student',
-          studentEmail: app.student?.email || 'student@univ.edu',
-          appointmentDate: app.slot?.startAt ? new Date(app.slot.startAt).toISOString().split('T')[0] : '',
-          timeSlot: app.slot?.startAt ? `${new Date(app.slot.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(app.slot.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '10:00 AM',
-          status: app.status || 'REQUESTED',
-          topic: app.supportRequest?.subject || 'Academic & Mental Wellbeing Support',
-          restrictedNotes: app.notes || '',
-          followUpRequired: true,
-        }));
-        setAppointments(mapped);
-      }
-    } catch (err) {
-      setAppointments([]);
+      const response = await apiFetch<ApiAppointment[]>('/appointments?limit=100');
+      setAppointments(response.data);
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to load appointments.');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadAppointments();
   }, []);
 
-  const handleStatusChange = async (id: string, status: CounsellorAppointment['status']) => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadAppointments();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadAppointments]);
+
+  async function updateStatus(id: string, status: AppointmentStatus, updatedNotes?: string) {
+    setSaving(true);
     try {
       await apiFetch(`/appointments/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(updatedNotes ? { notes: updatedNotes } : {}) }),
       });
+      setSelected(null);
       await loadAppointments();
-    } catch (err) {
-      // Error handled
+    } catch (cause) {
+      setError(cause instanceof ApiClientError ? cause.message : 'Unable to update the appointment.');
+    } finally {
+      setSaving(false);
     }
-  };
-
-  const handleSaveNotes = async () => {
-    if (!selectedApp) return;
-    try {
-      await apiFetch(`/appointments/${selectedApp.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'COMPLETED', notes }),
-      });
-      setSelectedApp(null);
-      await loadAppointments();
-    } catch (err) {
-      // Error handled
-    }
-  };
+  }
 
   return (
     <div className="space-y-6">
+      {error && <ErrorState message={error} onRetry={() => void loadAppointments()} />}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Appointment Calendar List (2 cols) */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-emerald-600" /> Upcoming Counselling Appointments
-              </CardTitle>
-              <CardDescription className="text-xs">Manage student mental wellness & academic guidance sessions</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-              {loading ? (
-                <LoadingState label="Loading counselling schedule..." />
-              ) : appointments.length === 0 ? (
-                <EmptyState
-                  icon={<UserCheck className="h-10 w-10 text-muted-foreground" />}
-                  title="No Scheduled Appointments"
-                  description="There are currently no active or booked student counselling appointments."
-                />
-              ) : (
-                <Table className="w-full min-w-[500px]">
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 text-xs">
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Topic</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="text-xs">
-                    {appointments.map((app) => (
-                      <TableRow key={app.id} className="hover:bg-muted/30">
-                        <TableCell>
-                          <div className="font-semibold text-foreground">{app.studentName}</div>
-                          <div className="text-[11px] text-muted-foreground">{app.studentEmail}</div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          <div>{app.appointmentDate}</div>
-                          <div className="text-[11px] font-mono">{app.timeSlot}</div>
-                        </TableCell>
-                        <TableCell className="font-medium text-foreground">{app.topic}</TableCell>
-                        <TableCell><StatusBadge status={app.status} /></TableCell>
-                        <TableCell className="text-right space-x-1">
-                          {app.status === 'REQUESTED' && (
-                            <>
-                              <Button size="sm" onClick={() => handleStatusChange(app.id, 'CONFIRMED')} className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white">
-                                Accept
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleStatusChange(app.id, 'CANCELLED')} className="h-7 text-[11px] text-rose-600">
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          {app.status === 'CONFIRMED' && (
-                            <Button size="sm" variant="outline" onClick={() => { setSelectedApp(app); setNotes(app.restrictedNotes || ''); }} className="h-7 text-[11px] border-emerald-500/30 text-emerald-600">
-                              Conduct Session
-                            </Button>
-                          )}
-                          {app.status === 'COMPLETED' && (
-                            <span className="text-[11px] text-emerald-600 font-medium">Session Complete</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Security & Confidentiality Banner (1 col) */}
-        <div className="space-y-4">
-          <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-                <Lock className="h-4 w-4 text-emerald-600" /> HIPAA / FERPA Protocol
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs text-emerald-700 dark:text-emerald-300/90 space-y-2">
-              <p>Session notes taken during counselling sessions are strictly encrypted and restricted exclusively to the assigned licensed counsellor.</p>
-              <p className="font-semibold pt-1 border-t border-emerald-500/20">Follow-up reminders are automated via student email notifications.</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-border/60 shadow-sm lg:col-span-2">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Calendar className="size-4 text-emerald-600" /> Counselling appointments</CardTitle><CardDescription>Manage requested and confirmed support sessions.</CardDescription></CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            {loading ? <LoadingState label="Loading counselling schedule..." /> : appointments.length === 0 ? <EmptyState icon={UserCheck} title="No appointments" description="No support appointments are assigned to this account." /> : (
+              <Table className="min-w-[620px]">
+                <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Date and time</TableHead><TableHead>Notes</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableBody>{appointments.map((appointment) => <TableRow key={appointment.id}><TableCell className="font-medium">{appointment.student.name ?? 'Student'}</TableCell><TableCell><p>{new Date(appointment.startAt).toLocaleDateString()}</p><p className="text-xs text-muted-foreground">{new Date(appointment.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(appointment.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></TableCell><TableCell className="max-w-48 truncate text-muted-foreground">{appointment.notes ?? 'No notes'}</TableCell><TableCell><StatusBadge status={appointment.status} /></TableCell><TableCell className="space-x-2 text-right">{appointment.status === 'REQUESTED' && <><Button size="sm" disabled={saving} onClick={() => void updateStatus(appointment.id, 'CONFIRMED')}>Confirm</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void updateStatus(appointment.id, 'CANCELLED')}>Cancel</Button></>}{appointment.status === 'CONFIRMED' && <Button size="sm" variant="outline" onClick={() => { setSelected(appointment); setNotes(appointment.notes ?? ''); }}>Complete session</Button>}{appointment.status === 'COMPLETED' && <span className="text-xs text-emerald-600">Completed</span>}</TableCell></TableRow>)}</TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-500/30 bg-emerald-500/5"><CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Lock className="size-4" /> Confidential access</CardTitle></CardHeader><CardContent className="space-y-2 text-xs text-muted-foreground"><p>Appointment and conversation data is restricted to participants and authorized server-side roles.</p><p>Data is protected in transit and by the provider. Do not describe this module as end-to-end encrypted or clinically certified.</p></CardContent></Card>
       </div>
-
-      {/* Session Notes Modal */}
-      <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
-        {selectedApp && (
-          <DialogContent className="sm:max-w-[450px]">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <Lock className="h-4 w-4 text-emerald-600" /> Restricted Session Notes
-              </DialogTitle>
-              <DialogDescription className="text-xs">Student: {selectedApp.studentName} | Topic: {selectedApp.topic}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2 text-xs">
-              <Textarea
-                placeholder="Write confidential counsellor notes here..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="h-28 text-xs font-mono"
-              />
-              <p className="text-[11px] text-muted-foreground italic">These notes will remain encrypted under FERPA standards.</p>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedApp(null)}>Cancel</Button>
-              <Button onClick={handleSaveNotes} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save & Mark Completed</Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
+      <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>{selected && <DialogContent><DialogHeader><DialogTitle>Complete support session</DialogTitle><DialogDescription>Student: {selected.student.name ?? 'Student'}</DialogDescription></DialogHeader><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Session follow-up notes..." /><DialogFooter><Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button><Button disabled={saving} onClick={() => void updateStatus(selected.id, 'COMPLETED', notes)}>Save and complete</Button></DialogFooter></DialogContent>}</Dialog>
     </div>
   );
 }

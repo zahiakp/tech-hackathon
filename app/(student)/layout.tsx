@@ -1,18 +1,13 @@
-import { redirect } from "next/navigation";
-
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import { StudentAppShell } from "@/components/layout/student-app-shell";
+import { requirePageRole } from "@/server/auth/page-guards";
 
 export default async function StudentLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const user = await requirePageRole("STUDENT");
 
   async function handleSignOut() {
     "use server";
@@ -20,7 +15,7 @@ export default async function StudentLayout({
   }
 
   return (
-    <StudentAppShell user={session.user} signOutAction={handleSignOut}>
+    <StudentAppShell user={user} signOutAction={handleSignOut}>
       {children}
     </StudentAppShell>
   );
