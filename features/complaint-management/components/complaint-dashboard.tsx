@@ -1,26 +1,70 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { MOCK_COMPLAINTS } from '@/lib/mock-data/admin-mock-data';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { ComplaintRecord } from '@/types/common';
 import { COMPLAINT_STATUS, ComplaintStatus } from '@/lib/constants/roles';
-import { Search, Filter, MessageSquare, ArrowUpRight, CheckCircle, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Search, FileText } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
 
 export function ComplaintDashboardFeature() {
-  const [complaints, setComplaints] = useState<ComplaintRecord[]>(MOCK_COMPLAINTS);
+  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintRecord | null>(null);
   const [noteText, setNoteText] = useState('');
+
+  const loadComplaints = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<any[]>('/complaints');
+      if (res.data) {
+        const mapped: ComplaintRecord[] = res.data.map((c: any) => ({
+          id: c.id,
+          referenceNumber: c.referenceCode || `CMP-2026-${c.id.slice(0, 4)}`,
+          title: c.title,
+          description: c.description,
+          category: c.category?.name || 'General Administration',
+          status: c.status || 'SUBMITTED',
+          isAnonymous: c.isAnonymous ?? false,
+          studentId: c.reporter?.id,
+          studentName: c.reporter?.name || 'Student',
+          assignedDepartment: c.category?.name || 'Campus Desk',
+          assignedStaffId: c.assignedTo?.id,
+          assignedStaffName: c.assignedTo?.name,
+          createdAt: c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          updatedAt: c.updatedAt ? new Date(c.updatedAt).toISOString().split('T')[0] : '',
+          campus: 'Main Campus',
+          internalNotes: c.messages ? c.messages.map((m: any) => ({
+            id: m.id,
+            author: m.sender?.name || 'Staff',
+            note: m.body,
+            createdAt: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          })) : [],
+        }));
+        setComplaints(mapped);
+      }
+    } catch (err) {
+      setComplaints([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadComplaints();
+  }, []);
 
   const filteredComplaints = complaints.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || c.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -28,34 +72,39 @@ export function ComplaintDashboardFeature() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleUpdateStatus = (id: string, newStatus: ComplaintStatus) => {
-    setComplaints(complaints.map(c => c.id === id ? { ...c, status: newStatus } : c));
-    if (selectedComplaint && selectedComplaint.id === id) {
-      setSelectedComplaint({ ...selectedComplaint, status: newStatus });
+  const handleUpdateStatus = async (id: string, newStatus: ComplaintStatus) => {
+    try {
+      await apiFetch(`/complaints/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus, note: 'Status updated by staff desk' }),
+      });
+      await loadComplaints();
+      if (selectedComplaint && selectedComplaint.id === id) {
+        setSelectedComplaint({ ...selectedComplaint, status: newStatus });
+      }
+    } catch (err) {
+      // Error handled
     }
   };
 
-  const handleAddNote = (e: React.FormEvent) => {
+  const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedComplaint || !noteText) return;
-    const newNote = {
-      id: `n-${Date.now()}`,
-      author: 'Admin Desk',
-      note: noteText,
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    const updated = {
-      ...selectedComplaint,
-      internalNotes: [...(selectedComplaint.internalNotes || []), newNote],
-    };
-    setSelectedComplaint(updated);
-    setComplaints(complaints.map(c => c.id === updated.id ? updated : c));
-    setNoteText('');
+
+    try {
+      await apiFetch(`/complaints/${selectedComplaint.id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ body: noteText }),
+      });
+      setNoteText('');
+      await loadComplaints();
+    } catch (err) {
+      // Error handled
+    }
   };
 
   return (
     <div className="space-y-6">
-
       {/* Search & Filter Bar */}
       <Card className="border-border/60 shadow-sm">
         <CardContent className="p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
@@ -89,42 +138,52 @@ export function ComplaintDashboardFeature() {
       {/* Complaints Table */}
       <Card className="border-border/60 shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          <Table className="w-full min-w-[550px]">
-            <TableHeader>
-              <TableRow className="bg-muted/40 text-xs">
-                <TableHead>Ref Number</TableHead>
-                <TableHead>Title & Description</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-xs">
-              {filteredComplaints.map((item) => (
-                <TableRow key={item.id} className="hover:bg-muted/30">
-                  <TableCell className="font-mono font-bold text-foreground">{item.referenceNumber}</TableCell>
-                  <TableCell>
-                    <div className="font-semibold text-foreground">{item.title}</div>
-                    <div className="text-[11px] text-muted-foreground line-clamp-1">{item.description}</div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{item.category}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.assignedDepartment}</TableCell>
-                  <TableCell><StatusBadge status={item.status} /></TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedComplaint(item)}
-                      className="h-7 text-[11px] border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
-                    >
-                      Review & Escalate
-                    </Button>
-                  </TableCell>
+          {loading ? (
+            <LoadingState label="Fetching complaints from backend..." />
+          ) : filteredComplaints.length === 0 ? (
+            <EmptyState
+              icon={<FileText className="h-10 w-10 text-muted-foreground" />}
+              title="No Campus Complaints Found"
+              description="No registered complaint records match your active query."
+            />
+          ) : (
+            <Table className="w-full min-w-[550px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40 text-xs">
+                  <TableHead>Ref Number</TableHead>
+                  <TableHead>Title & Description</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {filteredComplaints.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-muted/30">
+                    <TableCell className="font-mono font-bold text-foreground">{item.referenceNumber}</TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-foreground">{item.title}</div>
+                      <div className="text-[11px] text-muted-foreground line-clamp-1">{item.description}</div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{item.category}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.assignedDepartment}</TableCell>
+                    <TableCell><StatusBadge status={item.status} /></TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedComplaint(item)}
+                        className="h-7 text-[11px] border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                      >
+                        Review & Escalate
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

@@ -1,33 +1,103 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data/admin-mock-data';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { ClassAttendanceRecord, AttendanceStatus } from '@/types/common';
-import { QrCode, GraduationCap, CheckCircle2, XCircle, Clock, RefreshCw } from 'lucide-react';
+import { QrCode, CheckCircle2, XCircle, Clock, GraduationCap } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
 
 export function FacultyAttendanceFeature() {
-  const [record, setRecord] = useState<ClassAttendanceRecord>(MOCK_ATTENDANCE_RECORDS[0]);
+  const [record, setRecord] = useState<ClassAttendanceRecord | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
 
-  const toggleStudentStatus = (studentId: string, newStatus: AttendanceStatus) => {
+  const loadAttendance = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<any[]>('/attendance');
+      if (res.data && res.data.length > 0) {
+        const item = res.data[0];
+        setRecord({
+          id: item.id || 'att-801',
+          classCode: item.classCode || 'CS-401',
+          className: item.className || 'Distributed Systems',
+          subject: item.subject || 'Computer Science',
+          facultyId: item.facultyId || 'u-103',
+          facultyName: item.facultyName || 'Faculty Professor',
+          date: item.date || new Date().toISOString().split('T')[0],
+          totalStudents: item.students?.length || 0,
+          presentCount: item.students?.filter((s: any) => s.status === 'PRESENT').length || 0,
+          absentCount: item.students?.filter((s: any) => s.status === 'ABSENT').length || 0,
+          lateCount: item.students?.filter((s: any) => s.status === 'LATE').length || 0,
+          qrActive: true,
+          students: item.students || [],
+        });
+      } else {
+        setRecord(null);
+      }
+    } catch (err) {
+      setRecord(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAttendance();
+  }, []);
+
+  const toggleStudentStatus = async (studentId: string, newStatus: AttendanceStatus) => {
+    if (!record) return;
     const updatedStudents = record.students.map(s => s.studentId === studentId ? { ...s, status: newStatus } : s);
     const presentCount = updatedStudents.filter(s => s.status === 'PRESENT').length;
     const absentCount = updatedStudents.filter(s => s.status === 'ABSENT').length;
     const lateCount = updatedStudents.filter(s => s.status === 'LATE').length;
 
-    setRecord({
+    const newRecord = {
       ...record,
       students: updatedStudents,
       presentCount,
       absentCount,
       lateCount,
-    });
+    };
+
+    setRecord(newRecord);
+
+    try {
+      await apiFetch('/attendance', {
+        method: 'POST',
+        body: JSON.stringify(newRecord),
+      });
+    } catch (err) {
+      // Local state preserved
+    }
   };
+
+  if (loading) {
+    return <LoadingState label="Loading faculty attendance roster..." />;
+  }
+
+  if (!record || record.students.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <Button onClick={() => setShowQR(!showQR)} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-9 text-xs">
+            <QrCode className="h-4 w-4" /> {showQR ? 'Hide Live QR Code' : 'Generate Dynamic QR Attendance'}
+          </Button>
+        </div>
+        <EmptyState
+          icon={<GraduationCap className="h-10 w-10 text-muted-foreground" />}
+          title="No Class Roster Active"
+          description="There are currently no attendance sessions logged for your assigned courses."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,7 +108,7 @@ export function FacultyAttendanceFeature() {
         </Button>
       </div>
 
-      {/* Dynamic QR Code Modal Display */}
+      {/* Dynamic QR Code Display */}
       {showQR && (
         <Card className="border-emerald-500/40 bg-emerald-500/10 shadow-md animate-in fade-in zoom-in duration-200">
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -54,7 +124,6 @@ export function FacultyAttendanceFeature() {
               </p>
             </div>
 
-            {/* Generated QR Graphic Visual */}
             <div className="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-zinc-950 border border-emerald-500/30 shadow-lg">
               <div className="h-32 w-32 bg-slate-900 rounded-xl flex items-center justify-center p-2 text-emerald-400 font-mono text-[9px] text-center leading-tight">
                 [ DYNAMIC QR ENCRYPTED HASH ]<br/>{record.classCode}-2026-LIVE

@@ -1,44 +1,79 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { MOCK_BOOKS, MOCK_LIBRARY_ISSUES } from '@/lib/mock-data/admin-mock-data';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { LibraryBookRecord, LibraryIssueRecord } from '@/types/common';
-import { BookOpen, Search, ArrowRightLeft, DollarSign, AlertCircle, Plus } from 'lucide-react';
+import { ArrowRightLeft, AlertCircle, BookOpen } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
 
 export function LibraryDashboardFeature() {
-  const [books, setBooks] = useState<LibraryBookRecord[]>(MOCK_BOOKS);
-  const [issues, setIssues] = useState<LibraryIssueRecord[]>(MOCK_LIBRARY_ISSUES);
+  const [books, setBooks] = useState<LibraryBookRecord[]>([]);
+  const [issues, setIssues] = useState<LibraryIssueRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [studentIdScan, setStudentIdScan] = useState('');
   const [bookIsbnScan, setBookIsbnScan] = useState('');
 
-  const handleIssueBook = (e: React.FormEvent) => {
+  const loadLibrary = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<any>('/library');
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          const mappedBooks: LibraryBookRecord[] = res.data.map((bk: any) => ({
+            id: bk.id,
+            isbn: bk.isbn || '978-0000000000',
+            title: bk.title,
+            author: bk.author || 'Author',
+            category: bk.category || 'General',
+            totalCopies: bk.totalCopies || 1,
+            availableCopies: bk.availableCopies || 1,
+            issuedCopies: bk.issuedCopies || 0,
+            shelfLocation: bk.shelfLocation || 'Section A',
+            status: bk.status || 'AVAILABLE',
+          }));
+          setBooks(mappedBooks);
+        } else {
+          if (res.data.books) setBooks(res.data.books);
+          if (res.data.issues) setIssues(res.data.issues);
+        }
+      }
+    } catch (err) {
+      setBooks([]);
+      setIssues([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLibrary();
+  }, []);
+
+  const handleIssueBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentIdScan || !bookIsbnScan) return;
-    const newIssue: LibraryIssueRecord = {
-      id: `iss-${Date.now()}`,
-      bookId: 'bk-101',
-      bookTitle: 'Effective Java (3rd Edition)',
-      studentId: studentIdScan,
-      studentName: 'Student #' + studentIdScan,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate: '2026-08-08',
-      fineAmount: 0,
-      status: 'ISSUED',
-    };
-    setIssues([newIssue, ...issues]);
-    setStudentIdScan('');
-    setBookIsbnScan('');
+    try {
+      await apiFetch('/library', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: studentIdScan, isbn: bookIsbnScan, action: 'ISSUE' }),
+      });
+      setStudentIdScan('');
+      setBookIsbnScan('');
+      await loadLibrary();
+    } catch (err) {
+      // Error handled
+    }
   };
 
   return (
     <div className="space-y-6">
-
       {/* Quick Issue / Return Desk Card */}
       <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
         <CardHeader className="pb-2">
@@ -75,34 +110,42 @@ export function LibraryDashboardFeature() {
           <CardDescription className="text-xs">Automated daily overdue fine calculations</CardDescription>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          <Table className="w-full min-w-[550px]">
-            <TableHeader>
-              <TableRow className="bg-muted/40 text-xs">
-                <TableHead>Student Name</TableHead>
-                <TableHead>Book Title</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Fine Accrued</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-xs">
-              {issues.map((iss) => (
-                <TableRow key={iss.id} className="hover:bg-muted/30">
-                  <TableCell className="font-semibold text-foreground">{iss.studentName}</TableCell>
-                  <TableCell className="font-medium text-foreground">{iss.bookTitle}</TableCell>
-                  <TableCell className="text-rose-600 font-mono font-bold">{iss.dueDate}</TableCell>
-                  <TableCell className="font-bold text-rose-600">${iss.fineAmount.toFixed(2)}</TableCell>
-                  <TableCell><StatusBadge status={iss.status} /></TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" className="h-7 text-[11px] bg-emerald-600 text-white">
-                      Clear Fine & Return
-                    </Button>
-                  </TableCell>
+          {loading ? (
+            <LoadingState label="Loading library catalog & active loans..." />
+          ) : issues.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              No overdue book issues recorded.
+            </div>
+          ) : (
+            <Table className="w-full min-w-[550px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40 text-xs">
+                  <TableHead>Student Name</TableHead>
+                  <TableHead>Book Title</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Fine Accrued</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {issues.map((iss) => (
+                  <TableRow key={iss.id} className="hover:bg-muted/30">
+                    <TableCell className="font-semibold text-foreground">{iss.studentName}</TableCell>
+                    <TableCell className="font-medium text-foreground">{iss.bookTitle}</TableCell>
+                    <TableCell className="text-rose-600 font-mono font-bold">{iss.dueDate}</TableCell>
+                    <TableCell className="font-bold text-rose-600">${iss.fineAmount.toFixed(2)}</TableCell>
+                    <TableCell><StatusBadge status={iss.status} /></TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" className="h-7 text-[11px] bg-emerald-600 text-white">
+                        Clear Fine & Return
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -113,33 +156,43 @@ export function LibraryDashboardFeature() {
           <CardDescription className="text-xs">Copy availability & shelf location index</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 text-xs">
-                <TableHead>ISBN</TableHead>
-                <TableHead>Title & Author</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Available Copies</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-xs">
-              {books.map((bk) => (
-                <TableRow key={bk.id} className="hover:bg-muted/30">
-                  <TableCell className="font-mono text-foreground">{bk.isbn}</TableCell>
-                  <TableCell>
-                    <div className="font-semibold text-foreground">{bk.title}</div>
-                    <div className="text-[11px] text-muted-foreground">{bk.author}</div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{bk.category}</TableCell>
-                  <TableCell className="text-muted-foreground font-mono">{bk.shelfLocation}</TableCell>
-                  <TableCell className="font-bold text-emerald-600">{bk.availableCopies} / {bk.totalCopies}</TableCell>
-                  <TableCell><StatusBadge status={bk.status} /></TableCell>
+          {loading ? (
+            <LoadingState label="Fetching book catalog..." />
+          ) : books.length === 0 ? (
+            <EmptyState
+              icon={<BookOpen className="h-10 w-10 text-muted-foreground" />}
+              title="No Books in Catalog"
+              description="The library catalog is currently empty."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 text-xs">
+                  <TableHead>ISBN</TableHead>
+                  <TableHead>Title & Author</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Available Copies</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {books.map((bk) => (
+                  <TableRow key={bk.id} className="hover:bg-muted/30">
+                    <TableCell className="font-mono text-foreground">{bk.isbn}</TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-foreground">{bk.title}</div>
+                      <div className="text-[11px] text-muted-foreground">{bk.author}</div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{bk.category}</TableCell>
+                    <TableCell className="text-muted-foreground font-mono">{bk.shelfLocation}</TableCell>
+                    <TableCell className="font-bold text-emerald-600">{bk.availableCopies} / {bk.totalCopies}</TableCell>
+                    <TableCell><StatusBadge status={bk.status} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

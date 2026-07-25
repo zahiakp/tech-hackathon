@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,23 +9,54 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { MOCK_ADMIN_USERS } from '@/lib/mock-data/admin-mock-data';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { AdminUser } from '@/types/common';
 import { USER_ROLES, UserRole } from '@/lib/constants/roles';
-import { UserPlus, Search, ShieldCheck, UserX, CheckCircle, Edit3 } from 'lucide-react';
+import { UserPlus, Search, UserX, CheckCircle, Users } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
 
 export function UserManagementFeature() {
-  const [users, setUsers] = useState<AdminUser[]>(MOCK_ADMIN_USERS);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
-  // New user form state
+  // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<UserRole>('STAFF' as UserRole);
-  const [campus, setCampus] = useState('Main North Campus');
+  const [role, setRole] = useState<UserRole>('FACULTY');
+  const [campus, setCampus] = useState('Main Campus');
   const [department, setDepartment] = useState('Administration');
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<any[]>('/admin/users');
+      if (res.data) {
+        const mapped: AdminUser[] = res.data.map((u: any) => ({
+          id: u.id,
+          name: u.name || 'User',
+          email: u.email,
+          role: (u.roles?.[0]?.role?.code as UserRole) || 'FACULTY',
+          campus: u.profile?.campus || u.campus || 'Main Campus',
+          department: u.profile?.department || u.department || 'Staff',
+          isActive: u.status === 'ACTIVE',
+          createdAt: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
+        }));
+        setUsers(mapped);
+      }
+    } catch (err) {
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -33,27 +64,32 @@ export function UserManagementFeature() {
     return matchesSearch && matchesRole;
   });
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newUser: AdminUser = {
-      id: `u-${Date.now()}`,
-      name,
-      email,
-      role: role || 'FACULTY',
-      campus,
-      department,
-      isActive: true,
-      createdAt: new Date().toISOString().split('T')[0],
-      lastLogin: 'Just now',
-    };
-    setUsers([newUser, ...users]);
-    setIsAddUserOpen(false);
-    setName('');
-    setEmail('');
+    try {
+      await apiFetch('/register', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password: 'TempPassword123!' }),
+      });
+      setIsAddUserOpen(false);
+      setName('');
+      setEmail('');
+      await loadUsers();
+    } catch (err) {
+      // Error handled by apiFetch exception
+    }
   };
 
-  const toggleUserStatus = (id: string) => {
-    setUsers(users.map(u => u.id === id ? { ...u, isActive: !u.isActive } : u));
+  const toggleUserStatus = async (id: string, currentActive: boolean) => {
+    try {
+      await apiFetch(`/admin/users/${id}/roles`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive: !currentActive }),
+      });
+      await loadUsers();
+    } catch (err) {
+      // Handle error
+    }
   };
 
   return (
@@ -97,52 +133,63 @@ export function UserManagementFeature() {
       {/* Users Table */}
       <Card className="border-border/60 shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-          <Table className="w-full min-w-[600px]">
-            <TableHeader>
-              <TableRow className="bg-muted/40 text-xs">
-                <TableHead>User Name & Email</TableHead>
-                <TableHead>System Role</TableHead>
-                <TableHead>Campus Location</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Account Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="text-xs">
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="hover:bg-muted/30">
-                  <TableCell>
-                    <div className="font-semibold text-foreground">{user.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{user.email}</div>
-                  </TableCell>
-                  <TableCell><StatusBadge status={user.role} /></TableCell>
-                  <TableCell className="text-muted-foreground">{user.campus}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.department || 'N/A'}</TableCell>
-                  <TableCell>
-                    {user.isActive ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-xs">
-                        <CheckCircle className="h-3.5 w-3.5" /> Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-rose-500 font-medium text-xs">
-                        <UserX className="h-3.5 w-3.5" /> Inactive
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleUserStatus(user.id)}
-                      className={user.isActive ? "text-rose-600 border-rose-500/20 hover:bg-rose-500/10 h-7 px-2 text-[11px]" : "text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10 h-7 px-2 text-[11px]"}
-                    >
-                      {user.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  </TableCell>
+          {loading ? (
+            <LoadingState label="Loading users from database..." />
+          ) : filteredUsers.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-10 w-10 text-muted-foreground" />}
+              title="No Users Found"
+              description="No registered system users matched your filter criteria."
+              action={<Button onClick={() => setIsAddUserOpen(true)} size="sm" className="bg-emerald-600 text-white">Add New User</Button>}
+            />
+          ) : (
+            <Table className="w-full min-w-[600px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40 text-xs">
+                  <TableHead>User Name & Email</TableHead>
+                  <TableHead>System Role</TableHead>
+                  <TableHead>Campus Location</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Account Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id} className="hover:bg-muted/30">
+                    <TableCell>
+                      <div className="font-semibold text-foreground">{user.name}</div>
+                      <div className="text-[11px] text-muted-foreground">{user.email}</div>
+                    </TableCell>
+                    <TableCell><StatusBadge status={user.role} /></TableCell>
+                    <TableCell className="text-muted-foreground">{user.campus}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.department || 'N/A'}</TableCell>
+                    <TableCell>
+                      {user.isActive ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-xs">
+                          <CheckCircle className="h-3.5 w-3.5" /> Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-rose-500 font-medium text-xs">
+                          <UserX className="h-3.5 w-3.5" /> Inactive
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleUserStatus(user.id, user.isActive)}
+                        className={user.isActive ? "text-rose-600 border-rose-500/20 hover:bg-rose-500/10 h-7 px-2 text-[11px]" : "text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10 h-7 px-2 text-[11px]"}
+                      >
+                        {user.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

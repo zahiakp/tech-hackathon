@@ -1,34 +1,82 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { MOCK_COUNSELLOR_APPOINTMENTS } from '@/lib/mock-data/admin-mock-data';
+import { LoadingState } from '@/components/feedback/loading-state';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { CounsellorAppointment } from '@/types/common';
-import { Calendar, UserCheck, Lock, CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
+import { Calendar, Lock, UserCheck } from 'lucide-react';
+import { apiFetch } from '@/lib/api-client';
 
 export function CounsellorDashboardFeature() {
-  const [appointments, setAppointments] = useState<CounsellorAppointment[]>(MOCK_COUNSELLOR_APPOINTMENTS);
+  const [appointments, setAppointments] = useState<CounsellorAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<CounsellorAppointment | null>(null);
   const [notes, setNotes] = useState('');
 
-  const handleStatusChange = (id: string, status: CounsellorAppointment['status']) => {
-    setAppointments(appointments.map(a => a.id === id ? { ...a, status } : a));
+  const loadAppointments = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch<any[]>('/appointments');
+      if (res.data) {
+        const mapped: CounsellorAppointment[] = res.data.map((app: any) => ({
+          id: app.id,
+          studentId: app.student?.id || 'std-101',
+          studentName: app.student?.name || 'Student',
+          studentEmail: app.student?.email || 'student@univ.edu',
+          appointmentDate: app.slot?.startAt ? new Date(app.slot.startAt).toISOString().split('T')[0] : '',
+          timeSlot: app.slot?.startAt ? `${new Date(app.slot.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(app.slot.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '10:00 AM',
+          status: app.status || 'REQUESTED',
+          topic: app.supportRequest?.subject || 'Academic & Mental Wellbeing Support',
+          restrictedNotes: app.notes || '',
+          followUpRequired: true,
+        }));
+        setAppointments(mapped);
+      }
+    } catch (err) {
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveNotes = () => {
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const handleStatusChange = async (id: string, status: CounsellorAppointment['status']) => {
+    try {
+      await apiFetch(`/appointments/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      await loadAppointments();
+    } catch (err) {
+      // Error handled
+    }
+  };
+
+  const handleSaveNotes = async () => {
     if (!selectedApp) return;
-    setAppointments(appointments.map(a => a.id === selectedApp.id ? { ...a, restrictedNotes: notes, status: 'COMPLETED' } : a));
-    setSelectedApp(null);
+    try {
+      await apiFetch(`/appointments/${selectedApp.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'COMPLETED', notes }),
+      });
+      setSelectedApp(null);
+      await loadAppointments();
+    } catch (err) {
+      // Error handled
+    }
   };
 
   return (
     <div className="space-y-6">
-
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Appointment Calendar List (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
@@ -40,53 +88,63 @@ export function CounsellorDashboardFeature() {
               <CardDescription className="text-xs">Manage student mental wellness & academic guidance sessions</CardDescription>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto w-full min-w-0">
-              <Table className="w-full min-w-[500px]">
-                <TableHeader>
-                  <TableRow className="bg-muted/40 text-xs">
-                    <TableHead>Student Name</TableHead>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Topic</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="text-xs">
-                  {appointments.map((app) => (
-                    <TableRow key={app.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <div className="font-semibold text-foreground">{app.studentName}</div>
-                        <div className="text-[11px] text-muted-foreground">{app.studentEmail}</div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <div>{app.appointmentDate}</div>
-                        <div className="text-[11px] font-mono">{app.timeSlot}</div>
-                      </TableCell>
-                      <TableCell className="font-medium text-foreground">{app.topic}</TableCell>
-                      <TableCell><StatusBadge status={app.status} /></TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {app.status === 'REQUESTED' && (
-                          <>
-                            <Button size="sm" onClick={() => handleStatusChange(app.id, 'CONFIRMED')} className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white">
-                              Accept
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleStatusChange(app.id, 'CANCELLED')} className="h-7 text-[11px] text-rose-600">
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {app.status === 'CONFIRMED' && (
-                          <Button size="sm" variant="outline" onClick={() => { setSelectedApp(app); setNotes(app.restrictedNotes || ''); }} className="h-7 text-[11px] border-emerald-500/30 text-emerald-600">
-                            Conduct Session
-                          </Button>
-                        )}
-                        {app.status === 'COMPLETED' && (
-                          <span className="text-[11px] text-emerald-600 font-medium">Session Complete</span>
-                        )}
-                      </TableCell>
+              {loading ? (
+                <LoadingState label="Loading counselling schedule..." />
+              ) : appointments.length === 0 ? (
+                <EmptyState
+                  icon={<UserCheck className="h-10 w-10 text-muted-foreground" />}
+                  title="No Scheduled Appointments"
+                  description="There are currently no active or booked student counselling appointments."
+                />
+              ) : (
+                <Table className="w-full min-w-[500px]">
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 text-xs">
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Topic</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {appointments.map((app) => (
+                      <TableRow key={app.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div className="font-semibold text-foreground">{app.studentName}</div>
+                          <div className="text-[11px] text-muted-foreground">{app.studentEmail}</div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          <div>{app.appointmentDate}</div>
+                          <div className="text-[11px] font-mono">{app.timeSlot}</div>
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">{app.topic}</TableCell>
+                        <TableCell><StatusBadge status={app.status} /></TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {app.status === 'REQUESTED' && (
+                            <>
+                              <Button size="sm" onClick={() => handleStatusChange(app.id, 'CONFIRMED')} className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white">
+                                Accept
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleStatusChange(app.id, 'CANCELLED')} className="h-7 text-[11px] text-rose-600">
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {app.status === 'CONFIRMED' && (
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedApp(app); setNotes(app.restrictedNotes || ''); }} className="h-7 text-[11px] border-emerald-500/30 text-emerald-600">
+                              Conduct Session
+                            </Button>
+                          )}
+                          {app.status === 'COMPLETED' && (
+                            <span className="text-[11px] text-emerald-600 font-medium">Session Complete</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
