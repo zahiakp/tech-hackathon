@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/v1/cron/complaint-escalation",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
