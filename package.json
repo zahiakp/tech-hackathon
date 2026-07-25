@@ -10,7 +10,11 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -23,12 +27,16 @@
     "lucide-react": "^1.26.0",
     "next": "16.2.11",
     "next-auth": "5.0.0-beta.32",
+    "openai": "^6.49.0",
     "pg": "^8.16.3",
+    "pusher": "^5.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "shadcn": "^4.14.1",
+    "resend": "^6.18.0",
     "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "uploadthing": "^7.7.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -40,6 +48,13 @@
     "eslint-config-next": "16.2.11",
     "prisma": "^7.9.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.1",
+    "typescript": "^5",
+    "vitest": "^4.1.10",
+    "shadcn": "^4.14.1"
+  },
+  "overrides": {
+    "effect": "3.20.0",
+    "postcss": "8.5.18"
   }
 }
