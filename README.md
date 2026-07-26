@@ -1,4 +1,5 @@
 # Voxa Campus Platform
+docs : https://docs-voxa.web.app/
 
 A modular backend built into the existing Next.js App Router application for the 72-hour Voxa platform. The API is versioned under `/api/v1` and uses Auth.js, Prisma, Neon PostgreSQL, Zod, Pusher Channels, UploadThing, Resend, and the OpenAI Responses API.
 
