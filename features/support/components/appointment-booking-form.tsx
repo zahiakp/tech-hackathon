@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { CalendarCheck } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -43,7 +42,7 @@ export function AppointmentBookingForm({
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="Availability is preview data. This booking is not written to a calendar or backend." />
+
       {complete && (
         <SuccessState
           description="The selected slot is ready for UI review. No appointment was created."

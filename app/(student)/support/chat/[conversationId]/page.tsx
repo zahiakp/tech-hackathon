@@ -1,4 +1,3 @@
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { SupportChat } from "@/features/support/components/support-chat";
@@ -17,7 +16,7 @@ export default async function SupportChatPage({
   return (
     <div className="grid gap-6">
       <PageHeader description={`${person.specialty} · ${person.languages.join(", ")}`} eyebrow="Private conversation" title={person.name} />
-      <PreviewAlert description="Messages remain in local component state and are not sent or stored." />
+
       <SupportChat initialMessages={supportMessages} />
     </div>
   );

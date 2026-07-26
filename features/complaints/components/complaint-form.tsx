@@ -12,7 +12,6 @@ import {
 
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import {
   Attachment,
@@ -75,7 +74,7 @@ export function ComplaintForm() {
 
   return (
     <form className="grid gap-6" onSubmit={handleSubmit}>
-      <PreviewAlert description="This form does not create or upload a complaint. Data and selected files remain local to the current UI preview." />
+
 
       {previewComplete && (
         <SuccessState

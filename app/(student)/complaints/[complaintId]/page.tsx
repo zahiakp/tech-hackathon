@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowLeft, Star } from "lucide-react";
 
 import { EmptyState } from "@/components/feedback/empty-state";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -67,7 +66,7 @@ export default async function ComplaintDetailsPage({
         eyebrow={complaint.reference}
         title={complaint.title}
       />
-      <PreviewAlert description="This timeline and its attachments are preview data. No live complaint record is being queried." />
+
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]">
         <Card>

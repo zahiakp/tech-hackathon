@@ -8,7 +8,6 @@ import {
   UserRoundSearch,
 } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -36,7 +35,7 @@ export default function SupportPage() {
         eyebrow="Student care"
         title="Peer support & well-being"
       />
-      <PreviewAlert description="Some directory cards use demo data. Lexa and protected support services connect to the Voxa backend." />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {supportActions.map((action) => (
           <Link className="group" href={action.href} key={action.href}>

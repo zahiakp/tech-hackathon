@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { Send, Star } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -23,7 +22,7 @@ export function EventFeedbackForm() {
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="Feedback is not sent or stored." />
+
       {complete && <SuccessState title="Feedback preview ready" description="Your rating is complete for UI review." />}
       <FormField id="event-rating" label="Overall experience" required>
         <div className="flex gap-1" id="event-rating">

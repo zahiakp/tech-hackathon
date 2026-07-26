@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, Siren } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,7 +18,7 @@ export function SosLaunchPanel() {
 
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="This flow does not contact emergency services. It is a UI preview until the campus emergency backend and contact directory are connected." />
+
 
       <Card className="border-destructive/20 bg-destructive/5">
         <CardHeader className="items-center text-center">

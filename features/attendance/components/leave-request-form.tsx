@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { CalendarPlus } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -33,7 +32,7 @@ export function LeaveRequestForm() {
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="This leave request is not submitted to faculty or stored." />
+
       {complete && <SuccessState title="Leave request preview ready" description="The form is complete for UI review." />}
       <FormField id="leave-type" label="Leave type" required>
         <Select onValueChange={(value) => setType(value ?? "")} value={type}>

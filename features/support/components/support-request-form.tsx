@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { Send } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -31,7 +30,7 @@ export function SupportRequestForm() {
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="This support request remains in the browser preview and is not sent to a support team." />
+
       {complete && (
         <SuccessState
           description="The request is complete for UI review. Nothing was submitted."
