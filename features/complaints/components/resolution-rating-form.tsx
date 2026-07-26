@@ -5,7 +5,6 @@ import { Star } from "lucide-react";
 
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,7 +25,7 @@ export function ResolutionRatingForm() {
 
   return (
     <form className="grid gap-6" onSubmit={handleSubmit}>
-      <PreviewAlert description="Your rating is shown locally for UI review and is not saved." />
+
       {submitted && (
         <SuccessState
           description="The rating interaction is complete, but no feedback was submitted."

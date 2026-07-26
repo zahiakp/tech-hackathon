@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Gift, Sparkles } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,7 @@ export function RedeemRewardPanel({ reward, balance }: { reward: Reward; balance
   const remaining = balance - reward.cost;
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Redemption is a UI preview. Numix are not deducted and no claim is created." />
+
       {complete && <SuccessState title="Redemption preview ready" description="A real implementation would now issue a claim QR code." />}
       <Card>
         <CardHeader><span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary"><Gift /></span><CardTitle>{reward.title}</CardTitle><CardDescription>{reward.description}</CardDescription></CardHeader>

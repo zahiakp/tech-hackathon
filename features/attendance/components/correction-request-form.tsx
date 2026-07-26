@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { CheckCheck } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -32,7 +31,7 @@ export function CorrectionRequestForm() {
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="This correction request is not submitted or applied to attendance records." />
+
       {complete && <SuccessState title="Correction preview ready" description="The selected record and explanation are ready for UI review." />}
       <FormField id="attendance-record" label="Attendance record" required>
         <Select onValueChange={(value) => setRecordId(value ?? "")} value={recordId}>

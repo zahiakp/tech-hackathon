@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +61,7 @@ export function EmergencyStatusPanel({
 
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Use the tabs to review every required emergency status. No real alert has been created." />
+
 
       <Tabs
         onValueChange={(value) => setStatus(value as EmergencyStatus)}

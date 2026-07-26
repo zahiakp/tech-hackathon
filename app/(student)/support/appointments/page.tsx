@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CalendarPlus, Video } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export default function AppointmentsPage() {
         eyebrow="Student care"
         title="My appointments"
       />
-      <PreviewAlert description="Appointments are preview data and are not synchronized with a calendar." />
+
       <div className="grid gap-4 md:grid-cols-2">
         {supportAppointments.map((appointment) => {
           const person = supportPeople.find((item) => item.id === appointment.personId);

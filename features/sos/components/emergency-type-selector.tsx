@@ -13,7 +13,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -43,7 +42,7 @@ export function EmergencyTypeSelector({
 
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Your selection stays on this device only for the current preview and is not submitted." />
+
 
       <RadioGroup
         aria-label="Emergency type"

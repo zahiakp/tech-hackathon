@@ -41,7 +41,7 @@ export default async function RegisterPage() {
               Create your account
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              Your password is hashed before it is saved to PostgreSQL.
+              Your password is encrepted.
             </CardDescription>
           </div>
         </CardHeader>

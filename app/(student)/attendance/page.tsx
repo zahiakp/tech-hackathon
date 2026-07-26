@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, CalendarCheck2, ClipboardPenLine, FilePlus2, Percent, Rows3 } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataCard } from "@/components/shared/data-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,7 +23,7 @@ export default function AttendancePage() {
   return (
     <div className="grid gap-6">
       <PageHeader action={<Link className={buttonVariants({ variant: "outline" })} href="/attendance/daily">View daily log</Link>} description="Understand your current attendance and request corrections when needed." eyebrow="Academics" title="Attendance" />
-      <PreviewAlert description="Attendance records and percentages are preview data and are not connected to an academic system." />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <DataCard title="Overall attendance" value={`${percentage}%`} description={`${attended} of ${total} recorded classes`} icon={Percent} />
         <DataCard title="Subjects below target" value={lowSubjects.length} description="Minimum target is 75%" icon={AlertTriangle} />

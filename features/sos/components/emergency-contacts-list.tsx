@@ -1,6 +1,5 @@
 import { Clock3, Phone, ShieldCheck } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +20,7 @@ export function EmergencyContactsList({
 }: EmergencyContactsListProps) {
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Contact roles are shown for layout review. Phone numbers will come from the verified campus directory and have not been invented." />
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {contacts.map((contact) => (
           <Card className="h-full" key={contact.id}>

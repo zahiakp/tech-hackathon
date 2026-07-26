@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { TicketCheck } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { SuccessState } from "@/components/feedback/success-state";
 import { FormActions } from "@/components/forms/form-actions";
 import { FormField } from "@/components/forms/form-field";
@@ -25,7 +24,7 @@ export function EventRegistrationForm({ event, sessions }: { event: EventRecord;
 
   return (
     <form className="grid gap-6" onSubmit={submit}>
-      <PreviewAlert description="This registration is not submitted and no seat is reserved." />
+
       {complete && <SuccessState title="Registration preview ready" description={`Your preview selection for ${event.title} is complete.`} />}
       <FormField id="event-session" label="Preferred sub-session" required>
         <RadioGroup className="grid gap-3" onValueChange={setSessionId} value={sessionId}>

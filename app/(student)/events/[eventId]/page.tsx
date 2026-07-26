@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock3, ListChecks, MapPin, Ticket } from "lucide-react";
 
 import { EmptyState } from "@/components/feedback/empty-state";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ e
   return (
     <div className="grid gap-6">
       <PageHeader action={event.registrationStatus !== "closed" ? <Link className={buttonVariants()} href={`/events/${event.id}/register`}><Ticket />Register</Link> : undefined} description={event.description} eyebrow={event.category} title={event.title} />
-      <PreviewAlert description="Event details and registration availability are preview data." />
+
       <div className="grid gap-6 lg:grid-cols-[1fr_0.65fr]">
         <Card>
           <CardHeader><CardTitle>About this event</CardTitle><CardDescription>{event.description}</CardDescription></CardHeader>

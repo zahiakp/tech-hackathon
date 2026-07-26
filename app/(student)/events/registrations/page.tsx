@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Award, QrCode, Star } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,7 +11,7 @@ export default function EventRegistrationsPage() {
   return (
     <div className="grid gap-6">
       <PageHeader action={<Link className={buttonVariants({ variant: "outline" })} href="/events/certificates"><Award />Certificates</Link>} description="Access registered events, entry passes, and post-event actions." eyebrow="Campus events" title="My registrations" />
-      <PreviewAlert description="Registrations and attendance states are preview data." />
+
       <div className="grid gap-4">
         {eventRegistrations.map((registration) => {
           const event = eventsPreviewData.find((item) => item.id === registration.eventId);

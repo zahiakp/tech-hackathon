@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { LocateFixed, LockKeyhole, MapPin, Navigation } from "lucide-react";
 
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -22,7 +21,7 @@ export function LocationSharingPanel({
 }: LocationSharingPanelProps) {
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Location permission is not requested and coordinates are not transmitted in this UI-only version." />
+
 
       <Card>
         <CardHeader>

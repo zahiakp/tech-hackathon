@@ -1,7 +1,6 @@
 import { Inbox, Mail, MailOpen } from "lucide-react";
 
 import { EmptyState } from "@/components/feedback/empty-state";
-import { PreviewAlert } from "@/components/feedback/preview-alert";
 import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Card,
@@ -19,7 +18,7 @@ type AnonymousInboxProps = {
 export function AnonymousInbox({ messages }: AnonymousInboxProps) {
   return (
     <div className="grid gap-6">
-      <PreviewAlert description="Messages are preview data. A real anonymous inbox needs a secure access token and backend ownership checks." />
+
       {messages.length === 0 ? (
         <EmptyState
           description="Private replies to anonymous complaints will appear here."
